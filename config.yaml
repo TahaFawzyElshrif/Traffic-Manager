@@ -1,0 +1,109 @@
+general_settings:
+  is_gui : False
+  see_progress_each : 1
+  enable_variation_action : True
+algorithms_settings:
+  DQN:
+    # DQN settings
+    exploration_initial_eps : 1.0
+    exploration_final_eps : 0.01
+    exploration_fraction : 0.1
+    learning_rate : 1e-6
+    gamma : 0.99
+    
+    policy_kwargs :
+      net_arch: 
+        - 256
+        - 128
+
+      activation_fn: "torch.nn.ReLU"   
+
+    batch_size : 64
+
+  PPO:
+    HighGroupedSumoEnv_proposed_reward:
+      'learning_rate': 0.00040175764627327305
+      'gamma': 0.92120994593816
+      'gae_lambda': 0.9206969237484213
+      'ent_coef': 0.0963003024066053
+      'clip_range': 0.30509509716122457
+      'batch_size': 512
+      'net_arch': 512
+    HighGroupedSumoEnv_literature:
+      'learning_rate': 0.0003751655787285152
+      'gamma': 0.9949763592103507
+      'gae_lambda': 0.9463987883622811
+      'ent_coef': 0.05986584841970366
+      'clip_range': 0.14680559213273098
+      'batch_size': 128
+      'net_arch': 64
+    GroupedSumoEnv_proposed_reward:
+      'learning_rate': 0.0003751655787285152
+      'gamma': 0.9949763592103507
+      'gae_lambda': 0.9463987883622811
+      'ent_coef': 0.05986584841970366
+      'clip_range': 0.14680559213273098
+      'batch_size': 128
+      'net_arch': 64
+    GroupedSumoEnv_literature:
+      'learning_rate': 0.0003751655787285152
+      'gamma': 0.9949763592103507
+      'gae_lambda': 0.9463987883622811
+      'ent_coef': 0.05986584841970366
+      'clip_range': 0.14680559213273098
+      'batch_size': 128
+      'net_arch': 64
+
+
+  D3QN:
+    HighGroupedSumoEnv_proposed_reward:
+      'learning_rate': 0.00021319709090747468
+      'gamma': 0.9711739118011731
+      'tau': 0.9813155222894172
+      'l2_reg': 0.004261057398770192
+      'epsilon_decay': 0.14509979473154655 
+      'batch_size': 64 
+    HighGroupedSumoEnv_literature:
+        'learning_rate': 0.0008154135967793848
+        'gamma': 0.9481594699068221
+        'tau': 0.9191815092215342
+        'l2_reg': 0.0025966395527927365
+        'epsilon_decay': 0.21970369800818884
+        'batch_size': 32
+    GroupedSumoEnv_proposed_reward:
+      'learning_rate': 0.0009161471747644689
+      'gamma': 0.9973355199981524
+      'tau': 0.9745811152200108
+      'l2_reg': 0.00673733487618372
+      'epsilon_decay': 0.11139895293035257
+      'batch_size': 256
+    GroupedSumoEnv_literature:
+      'learning_rate': 0.00038910910078213
+      'gamma': 0.9028108626829976
+      'tau': 0.9987876098791424
+      'l2_reg': 0.00774645088987834
+      'epsilon_decay': 0.2930399218446447
+      'batch_size': 64
+
+
+
+experiment_settings:
+  
+  const_settings:
+    durations:
+      - 15
+      - 30
+      - 60
+      - 90
+    max_steps: 10000
+    n_env : 1
+    agent_id : '1698478721' #'1698478721' for data2 , '1888496828' for data 1 , '6082411793' for data 3 
+
+  changable_settings:
+    precent_scale : .38 # 0.14  or .38 for large scale
+    n_epsiode: 350 
+    max_sumo_steps: 2000 
+    ENV_NAME: 'GroupedSumoEnv' # 'HighGroupedSumoEnv' or "GroupedSumoEnv" or "SumoEnv"
+    REWARD_TYPE: 'literature' # 'proposed_reward' or 'literature' or 'project_reward'
+    EXPERIMENT_NAME : 'exp217'
+    seed : 0 #each experiment with a seed

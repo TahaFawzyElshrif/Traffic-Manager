@@ -1,0 +1,11 @@
+performance_begin;performance_clockBegin;performance_clockDuration;performance_clockEnd;performance_duration;performance_end;performance_personUpdatesPerSecond;performance_realTimeFactor;performance_traciDuration;performance_vehicleUpdatesPerSecond;vehicles_inserted;vehicles_loaded;vehicles_running;vehicles_waiting;teleports_jam;teleports_total;teleports_wrongLane;teleports_yield;safety_collisions;safety_emergencyBraking;safety_emergencyStops;persons_jammed;persons_loaded;persons_running;personTeleports_abortWait;personTeleports_total;personTeleports_wrongDest;vehicleTripStatistics_count;vehicleTripStatistics_departDelay;vehicleTripStatistics_departDelayWaiting;vehicleTripStatistics_duration;vehicleTripStatistics_routeLength;vehicleTripStatistics_speed;vehicleTripStatistics_timeLoss;vehicleTripStatistics_totalDepartDelay;vehicleTripStatistics_totalTravelTime;vehicleTripStatistics_waitingTime;pedestrianStatistics_duration;pedestrianStatistics_number;pedestrianStatistics_routeLength;pedestrianStatistics_timeLoss;rideStatistics_number;transportStatistics_number
+0.00;21810.67;1060.96;22871.62;500.00;500.00;0.00;0.47;232.19;48.25;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;261;605;123;239;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;0;0;0;0;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;0;0;0;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;0;0;0;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;0;0;0;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;138;11.92;-1.00;169.62;493.41;3.86;132.92;1645.00;23407.00;70.83;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;0.00;0;0.00;0.00;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;0;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;0

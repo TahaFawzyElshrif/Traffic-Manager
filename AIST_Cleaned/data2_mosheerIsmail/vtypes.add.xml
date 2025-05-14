@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<additional>
+    <vType id="passenger" vClass="passenger" accel="2.6" decel="4.5" length="5" minGap="2.5" maxSpeed="70" guiShape="passenger"/> <!--include car-->
+    <vType id="bus" vClass="bus" accel="1.0" decel="4.0" length="12" minGap="3.0" maxSpeed="50" guiShape="bus"/>
+    <vType id="truck" vClass="truck" accel="1.0" decel="3.0" length="8" minGap="3.0" maxSpeed="40" guiShape="truck"/>
+    <vType id="bike" vClass="bicycle" accel="1.5" decel="4.0" length="1.5" minGap="1.0" maxSpeed="15" guiShape="bicycle"/>
+    <vType id="car" vClass="passenger" accel="2.6" decel="4.5" length="5" minGap="2.5" maxSpeed="70" guiShape="passenger"/>
+    <vType id="toktok" vClass="motorcycle" accel="1.8" decel="4.0" length="2.5" minGap="1.0" maxSpeed="40" guiShape="moped"/>
+</additional>
