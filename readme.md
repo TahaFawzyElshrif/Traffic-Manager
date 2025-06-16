@@ -1,5 +1,3 @@
-Here’s a clean and professional rewrite of your README:
-
 ---
 
 # 🚦 Traffic Manager
