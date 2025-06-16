@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import pymysql
+timeout = 10
 
 # Set up Streamlit page config
 st.set_page_config(page_title="Live Data Dashboard", layout="wide")
@@ -10,13 +11,28 @@ st.title("📊 Live Data Dashboard")
 
 # Database connection
 def get_connection():
-    return pymysql.connect(host="localhost", user="root", password="", database="system_state")
+    return pymysql.connect(
+            charset="utf8mb4",
+            connect_timeout=timeout,
+            cursorclass=pymysql.cursors.DictCursor,
+            db="trafficManagerFull",	#"trafficManagerSignals",
+            host="mysql-19285eb2-tahaelshrif1-7999.h.aivencloud.com",
+            password="AVNS_aT0RGFafs6_34WFegSF",
+            read_timeout=timeout,
+            port=11520,
+            user="avnadmin",
+            write_timeout=timeout,
+        )  
+  
+
 
 # Query and load DataFrame
 def load_data():
     conn = get_connection()
-    query = "SELECT * FROM states1"
-    df = pd.read_sql(query, conn)
+    cursor = conn.cursor()
+    query = "SELECT * FROM traffic_data"
+    cursor.execute(query)
+    df =pd.DataFrame(cursor.fetchall())
     conn.close()
     return df
 
