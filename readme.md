@@ -17,7 +17,7 @@ Performance visualizations and experiment outputs can be found here:
 ## 🛠️ Prototype
 
 Check out the working prototype here:
-**[🔗 Prototype Link](./Proto_type_files/)**
+**[🔗 Prototype Link](https://drive.google.com/file/d/1gFzRVaTXxT-IpEnI-EpvBXNN5ygthrMJ/view?usp=sharing)**
 
 ---
 
