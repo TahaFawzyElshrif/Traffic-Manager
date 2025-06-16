@@ -27,4 +27,10 @@ class ardinuo:
         self.arduino.close()
 
 
+    def reset(self):
+        self.close_arduino()
+        self.arduino = serial.Serial(self.port, self.baudrate) # supposed to reset as fast as possible ,as when used in handling request not add unnecessary delay ,may be improved later 
+        
+        
+
 

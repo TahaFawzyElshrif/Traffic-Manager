@@ -1,4 +1,3 @@
-import pygame
 import cv2
 from ultralytics import solutions
 import time
@@ -20,26 +19,19 @@ class Video_Estimatior():
     cap = None
     waiting_time_full = {}
 
-    def __init__(self,lane_id,video_path_,yolo_path_,thresould_speed_,window_name_,video_output_path_,one_frame_processing_,DISPLAY_WIDTH ,DISPLAY_HEIGHT ):
+    def __init__(self,lane_id,global_url_,yolo_path_,thresould_speed_,one_frame_processing_,):
         self.yolo_path = yolo_path_
-        self.video_path = video_path_
+        self.global_url = global_url_
         self.thresould_speed = thresould_speed_
-        self.window_name =window_name_
-        self.video_output_path = video_output_path_
         self.one_frame_processing = one_frame_processing_
-        self.DISPLAY_WIDTH  = DISPLAY_WIDTH
-        self.DISPLAY_HEIGHT = DISPLAY_HEIGHT
         self.lane_id=lane_id
         self.intialize_Model_CV()
-        self.init_pygame()
         
         
     def intialize_Model_CV(self):
-        self.cap = cv2.VideoCapture(self.video_path)
+        self.cap = cv2.VideoCapture(self.global_url+"/video_feed")
         assert self.cap.isOpened(), "Error reading video file"
         w, h, self.fps = (int(self.cap.get(x)) for x in (cv2.CAP_PROP_FRAME_WIDTH, cv2.CAP_PROP_FRAME_HEIGHT, cv2.CAP_PROP_FPS))
-        self.video_writer = cv2.VideoWriter(self.video_output_path, cv2.VideoWriter_fourcc(*"mp4v"), self.fps, (w, h))
-
         self.speedestimator = solutions.SpeedEstimator(
             show=False,
             model=self.yolo_path,
@@ -50,42 +42,8 @@ class Video_Estimatior():
         self.one_second_processing = self.fps * self.one_frame_processing
 
 
-    def init_pygame(self):
-        pygame.init()
-        self.screen = pygame.display.set_mode((self.DISPLAY_WIDTH, self.DISPLAY_HEIGHT))
-        pygame.display.set_caption(self.window_name)
 
-    def close_vid(self):
-        pygame.quit()
-        self.cap.release()
-        cv2.destroyAllWindows()
-
-    def render(self,frame):
-        resized_frame = cv2.resize(frame, (self.DISPLAY_WIDTH, self.DISPLAY_HEIGHT))
-        rgb_frame = cv2.cvtColor(resized_frame, cv2.COLOR_BGR2RGB)
-        surface = pygame.surfarray.make_surface(rgb_frame.swapaxes(0, 1))
-        self.screen.blit(surface, (0, 0))
-        pygame.display.update()
-        
-        # Further Process Exit button (need modify)
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                self.close_vid()
                 
-    def render_frame_for_time(self,target_time): ### already do time sleep
-        start_time = time.perf_counter()
-        while True:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    self.close_vid()
-
-            elapsed_time = time.perf_counter() - start_time
-            if elapsed_time >= target_time:
-                break
-
-            # Add a small delay to avoid high CPU usage
-            pygame.time.delay(1)
-
 
 
 
