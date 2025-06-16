@@ -132,7 +132,7 @@ class SumoEnv(gym.Env):
         return self.encoded_action_mapping[action]
     
     def _all_equal(self, queue):
-        return len(queue) > 0 and all(x == queue[0] for x in queue)
+        return (len(queue) == queue.maxlen) and all(x == queue[0] for x in queue)
     
     def _get_last_two_or_default(self, dq): #before, after
         if len(dq) >= 2:
@@ -146,14 +146,14 @@ class SumoEnv(gym.Env):
         """
         Executes an action and advances the simulation by one step.
         """
-        
+        import time
+        start =time.time()
         if self.done_episode:
             print("Warning: Attempting to step after episode is done.")
             return self.state, 0.0, True, True, {}
-        
         # Convert gym action to SUMO action
         real_action, real_duration = self.get_real_action(action)
-        self.last_3_signals.append(real_action)
+        #self.last_3_signals.append(real_action)
 
         if (self.enable_variation_action):
             if (self._all_equal(self.last_3_signals)):
