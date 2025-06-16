@@ -12,16 +12,6 @@ st.title("📊 Live Data Dashboard")
 # Database connection
 def get_connection():
     return pymysql.connect(
-            charset="utf8mb4",
-            connect_timeout=timeout,
-            cursorclass=pymysql.cursors.DictCursor,
-            db="trafficManagerFull",	#"trafficManagerSignals",
-            host="mysql-19285eb2-tahaelshrif1-7999.h.aivencloud.com",
-            password="AVNS_aT0RGFafs6_34WFegSF",
-            read_timeout=timeout,
-            port=11520,
-            user="avnadmin",
-            write_timeout=timeout,
         )  
   
 
