@@ -7,7 +7,7 @@ int lcdRows = 2;
 // set traffic signa pins 
 const int redPin = 19; 
 const int yellowPin = 4; 
-const int greenPin = 25; 
+const int greenPin = 5;//25 
 
 
 // set LCD address
