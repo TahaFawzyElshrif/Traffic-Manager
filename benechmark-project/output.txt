@@ -1,0 +1,8 @@
+Time taken for training: 2325.476 seconds (38.758 Minutes)
+The Cumulative Reward of the Epsiode is : 3244.762 ,Using Reward 2 
+
+Waiting_Time: 418.75
+Speed: 2.51
+Waiting_Vehicles: 11400.0
+TimeLoss: 516.51
+Depart_Delay: 589.41
