@@ -1,4 +1,3 @@
-from Sensors import getSumoSensors_full ,len_sensors ,len_optimized_sensors
 import traci
 import os
 import json
@@ -36,18 +35,27 @@ class Connection:
         self.total_depart_delay = 0
         self.vehicle_count = 0
         self.departed_count = 0
+        self.done = False
 
     def initialize(self):
+        pass
+
+    def step():#<-Prototype error
         pass
 
     def set_traffic_scale(self,scale):
         pass
 
     def get_improved_road_proj(self, agent):
+        '''
+        Get State space that is used for experiments done with project reward
+        This is only used for experiments , Only implemented with Sumo Connection
+        '''
         return np.array([0]*5)
     
-    def get_sumo_statics(self,python_path, data_path):
+    def get_sumo_statics(self, data_path): #<-Prototype error
         return {}
+    
     def getTime(self):
         return 0
 
@@ -75,13 +83,9 @@ class Connection:
         """
         pass
 
-    def do_steps_duration(self, duration, max_sumo_step, agent, traffic_scale):
-        """
-        Performs simulation steps for a given duration.
-        """
-        pass
 
-    def do_step_one_agent(self, agent, new_action, duration, max_sumo_step, traffic_scale):
+
+    def do_step_one_agent(self, agent, new_action):#<-Prototype error
         """
         Performs a simulation step for a single agent.
         """
@@ -99,11 +103,7 @@ class Connection:
         """
         return 7
 
-    def get_detailed_road_literature(self, agent):
-        """
-        Retrieves detailed road literature data for an agent.
-        """
-        pass
+
 
     def get_detailed_road_proj(self, agent):
         """

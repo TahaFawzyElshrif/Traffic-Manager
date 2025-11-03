@@ -160,6 +160,7 @@ class ProtoRealConnection(Connection):
     def do_step_one_agent(self, agent, new_action, duration, max_sumo_step, traffic_scale):
         """
         Performs a simulation step for a single agent.
+        In New version : You can split by do step : send command , step is just time,as applied duration always =wanted , but need sol. to problem of command applying in ground (may for ardinuo just send command ,video may be thread )<--check processing time and cleanity
         """
         action_lane_i = new_action[0]
 

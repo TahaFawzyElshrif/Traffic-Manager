@@ -2,9 +2,10 @@ import traci
 from numpy import inf
 import numpy as np
 import gymnasium as gym
-from Sensors import len_sensors
 import math
 from functools import reduce
+
+len_sensors = 7
 
 def _get_traffic_lights_policies_common(n_agent, thres_count, agent_ids, shape_gym_func):
     """

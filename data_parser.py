@@ -2,7 +2,7 @@ import csv
 import ast
 import openpyxl
 from openpyxl import load_workbook
-
+import numpy as np
     
 def write_road_info(path,data,clear_file = False):#clear_file to be usable if schema changed
     if not data:
@@ -74,7 +74,7 @@ def read_road_info(path, match_value, match_column="episode"):
 
 
 
-def ReadRow(file_path):
+def ReadRow(file_path,col_to_chk="Waiting Time (s)"):
     wb = load_workbook(file_path)
     ws = wb.active
 
@@ -83,14 +83,14 @@ def ReadRow(file_path):
     for row in ws.iter_rows(min_row=2, values_only=False):  # skip header
         row_dict = {headers[i]: row[i].value for i in range(len(headers))}
         
-        if row_dict.get("Waiting Time (s)") is None:  # empty row found
+        if row_dict.get(col_to_chk) is None:  # empty row found
             # return only non-empty values
             return {k: v for k, v in row_dict.items() if v is not None}
     
     return None  # if no row found
 
 
-def WriteRow(data_dict, file_path):
+def WriteRow(data_dict, file_path,col_to_check = "Waiting Time (s)"):
     wb = load_workbook(file_path)
     ws = wb.active
 
@@ -99,10 +99,12 @@ def WriteRow(data_dict, file_path):
     for row in ws.iter_rows(min_row=2):  # go through rows
         row_values = {headers[i]: row[i].value for i in range(len(headers))}
         
-        if row_values.get("Waiting Time (s)") is None:  # first empty row
+        if row_values.get(col_to_check) is None:  # first empty row
             for key, value in data_dict.items():
                 if key in headers:
                     col_idx = headers.index(key) + 1
+                    if isinstance(value, np.ndarray):
+                        value = value.item() 
                     ws.cell(row=row[0].row, column=col_idx, value=value)
             break
 
@@ -132,7 +134,7 @@ def clean_dict_values(dict_):
     if "Area" in dict_:
           dict_["Area"] = 'Mosheer' if ('Mosheer' in dict_["Area"]) else 'Stefano' 
     if "Reward" in dict_:
-          dict_["Reward"] = 'proposed_reward' if ('Proposed' in dict_["Reward"]) else 'literature'
+          dict_["Reward"] = 'proposed' if ('Proposed' in dict_["Reward"]) else 'literature'
     if "Traffic Scale" in dict_:
           dict_["Traffic Scale"] = .14 if ('Normal' in dict_["Traffic Scale"]) else .38
     return dict_

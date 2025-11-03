@@ -1,0 +1,17 @@
+Area                    	Reward      	  Traffic Scale	Algorithm  	  Reward of Last Episode	  Waiting Time (s)	  Speed (m/s)	  Depart Delay (s)	  Time Loss (s)	  Waiting Car
+ Area3 (San Stefano)    	 Literature 	           0.14	 PPO       	              0.211171  	         0.673872 	    0.252849 	          0.624318	     0.631029  	   0.839421
+ Area2 (Mosheer Ismail) 	 Literature 	           0.14	 PPO       	              0.49756   	         0.771623 	    0.214706 	          0.823133	     0.86741   	   0.643226
+ Area3 (San Stefano)    	 Proposed   	           0.14	 PPO       	              0.919798  	         0.37047  	    0.0773891	          0.22451 	     0.160713  	   0.0398628
+ Area2 (Mosheer Ismail) 	 Proposed   	           0.14	 PPO       	              0.48622   	         0.753739 	    0.363079 	          0.451698	     0.66866   	   0.965445
+ Area3 (San Stefano)    	 Literature 	           0.38	 PPO       	              0.321063  	         0.376744 	    0.789099 	          0.333174	     0.891971  	   0.323796
+ Area2 (Mosheer Ismail) 	 Literature 	           0.38	 PPO       	              0.0501503 	         0.766994 	    0.319131 	          0.48455 	     0.930467  	   0.95313
+ Area3 (San Stefano)    	 Proposed   	           0.38	 PPO       	              0.464083  	         0.0984053	    0.0444354	          0.215673	     0.332536  	   0.625921
+ Area2 (Mosheer Ismail) 	 Proposed   	           0.38	 PPO       	              0.356003  	         0.546678 	    0.786843 	          0.557952	     0.675678  	   0.765449
+ Area3 (San Stefano)    	 Literature 	           0.14	 D3QN      	              0.688833  	         0.743306 	    0.494866 	          0.114162	     0.855852  	   0.192344
+ Area2 (Mosheer Ismail) 	 Literature 	           0.14	 D3QN      	              0.301997  	         0.0358339	    0.143797 	          0.516375	     0.00580131	   0.00456948
+ Area3 (San Stefano)    	 Proposed   	           0.14	 D3QN      	              0.00101296	         0.853829 	    0.136805 	          0.805795	     0.968167  	   0.413561
+ Area2 (Mosheer Ismail) 	 Proposed   	           0.14	 D3QN      	              0.749427  	         0.77916  	    0.136595 	          0.426554	     0.946116  	   0.806054
+ Area3 (San Stefano)    	 Literature 	           0.38	 D3QN      	              0.732422  	         0.858222 	    0.625868 	          0.420143	     0.517794  	   0.409174
+ Area2 (Mosheer Ismail) 	 Literature 	           0.38	 D3QN      	              0.134828  	         0.460697 	    0.214563 	          0.53454 	     0.585142  	   0.431086
+ Area3 (San Stefano)    	 Proposed   	           0.38	 D3QN      	              0.442762  	         0.924835 	    0.714651 	          0.543875	     0.871118  	   0.562764
+ Area2 (Mosheer Ismail) 	 Proposed   	           0.38	 D3QN      	              0.581691  	         0.933766 	    0.152576 	          0.578887	     0.992819  	   0.877516

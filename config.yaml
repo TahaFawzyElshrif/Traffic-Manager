@@ -2,7 +2,7 @@ general_settings:
   is_gui : False
   see_progress_each : 10
   enable_variation_action : True
-  yellow_time: 7 
+  yellow_time: 30
 
 algorithms_settings:
   DQN:
@@ -23,69 +23,214 @@ algorithms_settings:
     batch_size : 64
 
   PPO:
-    HighGroupedSumoEnv_proposed_reward:
-      'learning_rate': 0.00040175764627327305
-      'gamma': 0.92120994593816
-      'gae_lambda': 0.9206969237484213
-      'ent_coef': 0.0963003024066053
-      'clip_range': 0.30509509716122457
-      'batch_size': 512
-      'net_arch': 512
-    HighGroupedSumoEnv_literature:
-      'learning_rate': 0.0003751655787285152
-      'gamma': 0.9949763592103507
-      'gae_lambda': 0.9463987883622811
-      'ent_coef': 0.05986584841970366
-      'clip_range': 0.14680559213273098
-      'batch_size': 128
-      'net_arch': 64
-    GroupedSumoEnv_proposed_reward:
-      'learning_rate': 0.0003751655787285152
-      'gamma': 0.9949763592103507
-      'gae_lambda': 0.9463987883622811
-      'ent_coef': 0.05986584841970366
-      'clip_range': 0.14680559213273098
-      'batch_size': 128
-      'net_arch': 64
-    GroupedSumoEnv_literature:
-      'learning_rate': 0.0003751655787285152
-      'gamma': 0.9949763592103507
-      'gae_lambda': 0.9463987883622811
-      'ent_coef': 0.05986584841970366
-      'clip_range': 0.14680559213273098
-      'batch_size': 128
-      'net_arch': 64
-
-
+    Mosheer_GroupedSumoEnv_literature_reward:
+      learning_rate: 0.000607937307049537
+      gamma: 0.9170353599563604
+      gae_lambda: 0.813010318597056
+      ent_coef: 0.09488855372533334
+      clip_range: 0.3896896099223679
+      batch_size: 32
+      net_arch: 256
+      best_value: 7.181001663208008
+    Mosheer_HighGroupedSumoEnv_literature_reward:
+      learning_rate: 0.0003751655787285152
+      gamma: 0.9949763592103507
+      gae_lambda: 0.9463987883622811
+      ent_coef: 0.05986584841970366
+      clip_range: 0.14680559213273098
+      batch_size: 128
+      net_arch: 64
+      best_value: 1.5191274881362915
+    Mosheer_GroupedSumoEnv_proposed_reward:
+      learning_rate: 0.00018422110534358039
+      gamma: 0.9303938000716578
+      gae_lambda: 0.9049512863264476
+      ent_coef: 0.04319450186421158
+      clip_range: 0.1873687420594126
+      batch_size: 32
+      net_arch: 32
+      best_value: 0.0019006264628842
+    Mosheer_HighGroupedSumoEnv_proposed_reward:
+      learning_rate: 0.00018422110534358039
+      gamma: 0.9303938000716578
+      gae_lambda: 0.9049512863264476
+      ent_coef: 0.04319450186421158
+      clip_range: 0.1873687420594126
+      batch_size: 32
+      net_arch: 32
+      best_value: 0.1176448762416839
+    Stefano_GroupedSumoEnv_literature_reward:
+      learning_rate: 0.0003751655787285152
+      gamma: 0.9949763592103507
+      gae_lambda: 0.9463987883622811
+      ent_coef: 0.05986584841970366
+      clip_range: 0.14680559213273098
+      batch_size: 128
+      net_arch: 64
+      best_value: -203.8903961181641
+    Stefano_HighGroupedSumoEnv_literature_reward:
+      learning_rate: 0.00018422110534358039
+      gamma: 0.9303938000716578
+      gae_lambda: 0.9049512863264476
+      ent_coef: 0.04319450186421158
+      clip_range: 0.1873687420594126
+      batch_size: 32
+      net_arch: 32
+      best_value: -66.05152130126953
+    Stefano_GroupedSumoEnv_proposed_reward:
+      learning_rate: 0.0003751655787285152
+      gamma: 0.9949763592103507
+      gae_lambda: 0.9463987883622811
+      ent_coef: 0.05986584841970366
+      clip_range: 0.14680559213273098
+      batch_size: 128
+      net_arch: 64
+      best_value: -0.3436190187931061
+    Stefano_HighGroupedSumoEnv_proposed_reward:
+      learning_rate: 0.000607937307049537
+      gamma: 0.9170353599563604
+      gae_lambda: 0.813010318597056
+      ent_coef: 0.09488855372533334
+      clip_range: 0.3896896099223679
+      batch_size: 32
+      net_arch: 256
+      best_value: 0.2329678535461425
   D3QN:
-    HighGroupedSumoEnv_proposed_reward:
-      'learning_rate': 0.00021319709090747468
-      'gamma': 0.9711739118011731
-      'tau': 0.9813155222894172
-      'l2_reg': 0.004261057398770192
-      'epsilon_decay': 0.14509979473154655 
-      'batch_size': 64 
-    HighGroupedSumoEnv_literature:
-        'learning_rate': 0.0008154135967793848
-        'gamma': 0.9481594699068221
-        'tau': 0.9191815092215342
-        'l2_reg': 0.0025966395527927365
-        'epsilon_decay': 0.21970369800818884
-        'batch_size': 32
-    GroupedSumoEnv_proposed_reward:
-      'learning_rate': 0.0009161471747644689
-      'gamma': 0.9973355199981524
-      'tau': 0.9745811152200108
-      'l2_reg': 0.00673733487618372
-      'epsilon_decay': 0.11139895293035257
-      'batch_size': 256
-    GroupedSumoEnv_literature:
-      'learning_rate': 0.00038910910078213
-      'gamma': 0.9028108626829976
-      'tau': 0.9987876098791424
-      'l2_reg': 0.00774645088987834
-      'epsilon_decay': 0.2930399218446447
-      'batch_size': 64
+    Mosheer_GroupedSumoEnv_literature_reward:
+      learning_rate: 0.0005340578928235891
+      gamma: 0.983060663976777
+      tau: 0.8138600249086047
+      l2_reg: 0.0015923282520604186
+      epsilon_decay: 0.018381473853544696
+      batch_size: 32
+      best_value: 3.128125000000003
+    Mosheer_HighGroupedSumoEnv_literature_reward:
+      learning_rate: 0.0006061485331561786
+      gamma: 0.9452746472846707
+      tau: 0.9006203026370247
+      l2_reg: 0.0037021890378036984
+      epsilon_decay: 0.07993655135584327
+      batch_size: 512
+      best_value: 13.0674375
+    Mosheer_GroupedSumoEnv_proposed_reward:
+      learning_rate: 0.0007855371290709986
+      gamma: 0.9255229501939503
+      tau: 0.9543456845644845
+      l2_reg: 0.0034391121335607924
+      epsilon_decay: 0.05064880434660081
+      batch_size: 64
+      best_value: 0.0014164204699552
+    Mosheer_HighGroupedSumoEnv_proposed_reward:
+      learning_rate: 0.0008053331837421131
+      gamma: 0.9426434192039376
+      tau: 0.8633822368716383
+      l2_reg: 0.002521465878280056
+      epsilon_decay: 0.13098288537428604
+      batch_size: 256
+      best_value: 0.9866121082604448
+    Stefano_GroupedSumoEnv_literature_reward:
+      learning_rate: 0.0006258193883774622
+      gamma: 0.926513725745269
+      tau: 0.8589311001338087
+      l2_reg: 0.005461078102679378
+      epsilon_decay: 0.34370427025883404
+      batch_size: 32
+      best_value: -58.76849999999996
+    Stefano_HighGroupedSumoEnv_literature_reward:
+      learning_rate: 0.000850899349820928
+      gamma: 0.9727804232088916
+      tau: 0.8347740449159183
+      l2_reg: 0.008845922704702299
+      epsilon_decay: 0.08030694930621936
+      batch_size: 32
+      best_value: -0.4202499999999922
+    Stefano_GroupedSumoEnv_proposed_reward:
+      learning_rate: 0.00014820895825491502
+      gamma: 0.9812092649437051
+      tau: 0.8461583131395655
+      l2_reg: 0.007994896592246281
+      epsilon_decay: 0.36143610269559096
+      batch_size: 32
+      best_value: 1.7169270313353044
+    Stefano_HighGroupedSumoEnv_proposed_reward:
+      learning_rate: 0.000496478210072107
+      gamma: 0.9790875908031732
+      tau: 0.9622228960134098
+      l2_reg: 0.00311928435553257
+      epsilon_decay: 0.04789180763226738
+      batch_size: 64
+      best_value: 2.304375174277133
+
+
+  Sumorl_Mosheer_literature_reward_d3qn:
+    learning_rate: 0.00013818289879346935
+    gamma: 0.9383712247783591
+    tau: 0.9480222657602001
+    l2_reg: 0.007071934390288297
+    epsilon_decay: 0.08964095843047097
+    batch_size: 128
+    best_value: 5.771374999999999
+  Sumorl_Mosheer_literature_reward_ppo:
+    learning_rate: 0.0004824144333336664
+    gamma: 0.9246058826159601
+    gae_lambda: 0.8983845932762264
+    ent_coef: 0.050479103389758265
+    clip_range: 0.20463504986916645
+    batch_size: 32
+    net_arch: 128
+    best_value: 1.249375581741333
+  Sumorl_Mosheer_proposed_reward_d3qn:
+    learning_rate: 0.0007127854006164563
+    gamma: 0.9271496141338004
+    tau: 0.9446458101495491
+    l2_reg: 0.0054824048866425855
+    epsilon_decay: 0.3281904215087639
+    batch_size: 128
+    best_value: 0.0028062276540891
+  Sumorl_Mosheer_proposed_reward_ppo:
+    learning_rate: 2.7341716321401996e-05
+    gamma: 0.9777624989775414
+    gae_lambda: 0.8548969946564962
+    ent_coef: 0.07011625953937599
+    clip_range: 0.24162121637632672
+    batch_size: 128
+    net_arch: 128
+    best_value: 0.0142470598220825
+  Sumorl_Stefano_literature_reward_d3qn:
+    learning_rate: 0.0005788143007523125
+    gamma: 0.9445322032078695
+    tau: 0.9677469440218635
+    l2_reg: 0.005416012803853359
+    epsilon_decay: 0.23625426782170927
+    batch_size: 256
+    best_value: 0.0
+  Sumorl_Stefano_literature_reward_ppo:
+    learning_rate: 0.0003751655787285152
+    gamma: 0.9949763592103507
+    gae_lambda: 0.9463987883622811
+    ent_coef: 0.05986584841970366
+    clip_range: 0.14680559213273098
+    batch_size: 128
+    net_arch: 64
+    best_value: 0.0
+  Sumorl_Stefano_proposed_reward_d3qn:
+    learning_rate: 0.0003862336077388552
+    gamma: 0.9019164128507549
+    tau: 0.9610123215119187
+    l2_reg: 0.0017182063168680716
+    epsilon_decay: 0.06608113154635463
+    batch_size: 64
+    best_value: 0.0
+  Sumorl_Stefano_proposed_reward_ppo:
+    learning_rate: 0.0003751655787285152
+    gamma: 0.9949763592103507
+    gae_lambda: 0.9463987883622811
+    ent_coef: 0.05986584841970366
+    clip_range: 0.14680559213273098
+    batch_size: 128
+    net_arch: 64
+    best_value: 0.0
+
 
 
 
@@ -99,7 +244,9 @@ experiment_settings:
       - 30
       - 60
       - 90 
-    max_steps: 2000 #10000
+    max_steps: 10000
+    n_episode_evaluation: 5
+    larger_evaluation: 10800
     n_env : 1
     enable_gcd : True
     # agent_id : '1698478721' #'1698478721' for data2 , '1888496828' for data 1 , '6082411793' for data 3 

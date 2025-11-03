@@ -109,7 +109,7 @@ class DefaultObservation(SumoObservation):
         """Return average speed of vehicles in controlled lanes."""
         vehs = self.get_vehicle_list()
         if not vehs:
-            return 1.0  # Default when no vehicles present
+            return 0.0  # Default when no vehicles present
         return np.mean([traci.vehicle.getSpeed(v) for v in vehs])
 
     def get_var_speed(self):

@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- generated on 2025-11-02 13:13:50 by Eclipse SUMO sumo Version 1.24.0
+<sumoConfiguration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/sumoConfiguration.xsd">
+
+    <input>
+        <net-file value="/content/drive/MyDrive/study/graduation_project/final/Code/project_files/TrafficManager/TrafficManager/AIST/data2_mosheerIsmail/map.net.xml"/>
+        <route-files value="/content/drive/MyDrive/study/graduation_project/final/Code/project_files/TrafficManager/TrafficManager/AIST/data2_mosheerIsmail/route.rou.xml"/>
+    </input>
+
+    <output>
+        <tripinfo-output value="/content/drive/MyDrive/study/graduation_project/final/Code/project_files/TrafficManager/TrafficManager/AIST/data2_mosheerIsmail/tripinfo.xml"/>
+        <statistic-output value="/content/drive/MyDrive/study/graduation_project/final/Code/project_files/TrafficManager/TrafficManager/AIST/data2_mosheerIsmail/osm.statistics.xml"/>
+    </output>
+
+    <time>
+        <begin value=" 10800"/>
+        <end value="22600"/>
+        <step-length value="1"/>
+    </time>
+
+    <processing>
+        <threads value="1"/>
+        <collision.action value="warn"/>
+        <collision.check-junctions value="True"/>
+        <collision.mingap-factor value="0.1"/>
+        <scale value="1.38"/>
+        <time-to-teleport value="1000"/>
+        <waiting-time-memory value="1000"/>
+        <max-depart-delay value="300"/>
+        <pedestrian.striping.mingap-to-vehicle value="0.25"/>
+    </processing>
+
+    <routing>
+        <weights.random-factor value="1.5"/>
+    </routing>
+
+    <report>
+        <no-warnings value="true"/>
+        <log value="sumo.log"/>
+    </report>
+
+    <traci_server>
+        <remote-port value="39505"/>
+    </traci_server>
+
+    <random_number>
+        <seed value="3"/>
+    </random_number>
+
+</sumoConfiguration>
+-->
+
+<statistics xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/statistic_file.xsd">
+    <performance clockBegin="1762089230.73" clockEnd="1762089266.08" clockDuration="35.35" traciDuration="15.93" realTimeFactor="305.50" vehicleUpdatesPerSecond="88529.53" personUpdatesPerSecond="0.00" begin="10800.00" end="21600.00" duration="10800.00"/>
+    <vehicles loaded="1246" inserted="854" running="514" waiting="72"/>
+    <teleports total="59" jam="27" yield="32" wrongLane="0"/>
+    <safety collisions="1" emergencyStops="0" emergencyBraking="0"/>
+    <persons loaded="0" running="0" jammed="0"/>
+    <personTeleports total="0" abortWait="0" wrongDest="0"/>
+    <vehicleTripStatistics count="340" routeLength="967.16" speed="9.53" duration="1148.36" waitingTime="1077.95" timeLoss="1099.13" departDelay="70.47" departDelayWaiting="-1.00" totalTravelTime="390441.00" totalDepartDelay="23961.00"/>
+    <pedestrianStatistics number="0" routeLength="0.00" duration="0.00" timeLoss="0.00"/>
+    <rideStatistics number="0"/>
+    <transportStatistics number="0"/>
+</statistics>

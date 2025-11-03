@@ -10,20 +10,27 @@ from stable_baselines3.dqn.dqn import DQN as SB3_DQN
 import math
 from stable_baselines3.common.callbacks import BaseCallback
 
-# Callback class to track rewards during RL training
+#----------------------------
+# Callbacks
+#----------------------------
+
 class Stable_RewardCallback(BaseCallback):
-    def __init__(self, max_episodes):
+    def __init__(self, max_episodes,patience=20):
         """
         Initializes the callback for tracking rewards and losses during training.
-
+        Assume single environment
         Parameters:
         max_episodes (int): The maximum number of episodes to track.
         """
         super().__init__()
         self.max_episodes = max_episodes
+        self.patience = patience
+
         self.episode_rewards = []  
         self.episode_reward = 0 # Cumulative reward for each episode
         self.episode_count = 0
+        self._wait = 0
+        self.best_reward = float('-inf')
 
 
     def _on_step(self) -> bool:
@@ -53,10 +60,69 @@ class Stable_RewardCallback(BaseCallback):
             # Stop training if the maximum number of episodes is reached
             if self.episode_count >= self.max_episodes:
                 return False  # Stops training
-
+        
+            # Early Stopping
+            if self.episode_rewards[-1] <= self.best_reward:
+                    self._wait += 1
+                    if self._wait >= self.patience:
+                           print(f"Stopping training: reward did not improve for {self.patience} episodes")
+                           return False
+            else:
+                           self.best_reward = self.episode_rewards[-1]
+                           self._wait = 0 
         return True
 
-# Custom Policy with RMSprop
+
+class D3QNRewardCallback:
+    def __init__(self, max_episodes, patience=20):
+        """
+        Callback to monitor rewards and implement early stopping for D3QNAgent.
+
+        Args:
+            max_episodes (int): Maximum episodes allowed.
+            patience (int): Stop if no improvement after these many episodes.
+        """
+        self.max_episodes = max_episodes
+        self.patience = patience
+        
+        self.episode_rewards = []
+        self.best_reward = float('-inf')
+        self._wait = 0
+
+    def on_episode_end(self, episode, reward):
+        """
+        Called at the end of each episode.
+
+        Args:
+            episode (int): Current episode number.
+            reward (float): Total reward for the episode.
+        
+        Returns:
+            bool: True to continue, False to stop.
+        """
+        self.episode_rewards.append(reward)
+        print(Fore.MAGENTA + f"Episode {episode} finished with reward {reward}" + Style.RESET_ALL)
+
+        # Early stopping logic
+        if reward > self.best_reward:
+            self.best_reward = reward
+            self._wait = 0
+        else:
+            self._wait += 1
+            if self._wait >= self.patience:
+                print(Fore.RED + f"Stopping training: reward did not improve for {self.patience} episodes" + Style.RESET_ALL)
+                return False
+        
+        # Stop after max_episodes
+        if episode >= self.max_episodes:
+            return False
+        
+        return True
+
+
+#-------------------------------------------
+# DQN with epsilion greedy - RMS Prob
+#-------------------------------------------
 class RMS_DQNPolicy(DQNPolicy):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -67,6 +133,7 @@ class RMS_DQNPolicy(DQNPolicy):
 
         # Replace the optimizer with RMSprop
         self.optimizer = RMSprop(self.parameters(), lr=lr_schedule(1))
+
 
 class EpsDQN(DQN): #DQN
     def __init__(self, *args, min_epsilon=0.01, max_epsilon=1.0, decay_rate=0.001, **kwargs):

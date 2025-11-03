@@ -46,6 +46,9 @@ class Agent:
         self.time_since_last_phase_change = 0
         self.current_phase = 0
 
+        
+
+
     @property
     def time_to_act(self):
         """Check if it's time for the agent to take the next action."""
@@ -67,7 +70,7 @@ class Agent:
             
             # If we've been in this phase too long, we might want to force a brief transition
             # But for now, just continue the phase
-            self.env.conn.do_step_one_agent(self.agent_id, current_action)
+            self.env.conn.do_step_one_agent(self.agent_id, current_action,new_phase)
             
             # Use the new duration for timing
             self.next_action_time = self.env.conn.getTime() + new_duration * self.step_size
@@ -75,7 +78,7 @@ class Agent:
         # Case 2: Different phase but minimum time not met - continue current phase
         elif self.time_since_last_phase_change < self.min_phase:
             
-            self.env.conn.do_step_one_agent(self.agent_id, current_action)
+            self.env.conn.do_step_one_agent(self.agent_id, current_action,new_phase)
             
             # Keep current phase timing
             current_duration = self.env.get_real_action(self.current_phase)[1]
@@ -86,7 +89,7 @@ class Agent:
             
             yellow_action = self.env.corresponding_yellow[current_action, new_action]
             
-            self.env.conn.do_step_one_agent(self.agent_id, yellow_action)
+            self.env.conn.do_step_one_agent(self.agent_id, yellow_action,new_phase)
             
             # Update state for yellow phase
             self.current_phase = new_phase
@@ -106,7 +109,7 @@ class Agent:
             self.env.conn.do_step_one_agent(
                 self.agent_id,
                 self.env.get_real_action(self.current_phase)[0],
-                
+                self.current_phase
             )
             self.is_yellow = False
 
@@ -147,18 +150,22 @@ class SumoEnv(gym.Env):
         self.sumo_traffic_scale = sumo_traffic_scale
         self.enable_variation_action = enable_variation_action
         self.delta_time = 1  # Default simulation step duration
-
+        self.enable_logs=True
+        if( self.enable_logs==True):
+          self.logs = []
+        
         self.python_path = ""
         self.data_path = ""
         self.last_run_dict = {}
         self.see_progress_each = 1
-
+        self.last_3_signals = deque(maxlen=5)
+ 
         self.conn.set_traffic_scale(self.sumo_traffic_scale)
 
         # Observation space
         self.observation_space = gym.spaces.Box(
             low=-np.inf, high=np.inf,
-            shape=(self.observation_size,), dtype=np.float32
+            shape=(self.observation_size,), dtype=np.float64
         )
         self.state = np.zeros(self.observation_size, dtype=np.float32)
 
@@ -196,6 +203,7 @@ class SumoEnv(gym.Env):
         }
         self.encoded_action_mapping = dict(zip(range(len(self.space)), self.space))
         self.action_space = gym.spaces.Discrete(len(self.space))
+        self.reverse_mapping = {v: k for k, v in self.encoded_action_mapping.items()}
 
     def close(self):
         """Close the environment and release resources."""
@@ -203,7 +211,10 @@ class SumoEnv(gym.Env):
         self._checkFinalReset()
         self.done_episode = True
         print("Environment closed.")
-
+        
+    def _all_equal(self, queue):
+        return (len(queue) == queue.maxlen) and all(x == queue[0] for x in queue)
+    
     def reset(self, seed=None, options=None):
         """Reset the environment state."""
         if seed is not None:
@@ -217,6 +228,7 @@ class SumoEnv(gym.Env):
         super().reset(seed=seed)
 
         self.conn.close()
+        self.last_3_signals.clear()
         self._checkFinalReset()
         self.conn.initialize()
         self.state = np.zeros(self.observation_size, dtype=np.float32)
@@ -234,6 +246,10 @@ class SumoEnv(gym.Env):
             agent.is_yellow = False
             agent.current_phase = 0  # Reset to initial phase
             
+        if( self.enable_logs==True):
+          pd.DataFrame(self.logs).to_csv("env_logs.csv", index=False)
+          self.logs = []
+        
         print("Environment reset - agents properly initialized.")
         return self.state, {}
 
@@ -261,7 +277,7 @@ class SumoEnv(gym.Env):
                 ts.update()
                 if ts.time_to_act:
                     time_to_act = True
-            if iteration > 100:
+            if iteration > 200:
                 print("Breaking due to too many iterations")
                 break
             if self.conn.done:
@@ -273,9 +289,17 @@ class SumoEnv(gym.Env):
             agent_obj = list(self.agents.values())[0]
             if agent_obj.time_to_act:
                 agent_obj.set_next_phase(actions)
+                
+    def inverse_action(self, action_str: str) -> str:
+        """
+        Invert a traffic signal string: replace 'g' with 'r' and 'r' with 'g'.
+        """
+        return "".join("g" if ch == "r" else "r" for ch in action_str)
 
     def step(self, action):
         """Advance the simulation by one step given an action."""
+        act_i,dur_i = self.get_real_action(action)
+
         if self.done_episode:
             print("Warning: Step called after episode ended.")
             return self.state, 0.0, True, True, {}
@@ -284,8 +308,14 @@ class SumoEnv(gym.Env):
             for _ in range(self.delta_time):
                 self.conn.step()
         else:
+            if self.enable_variation_action: # If enabled variation only use the queue ,otherwise not use
+                if self._all_equal(self.last_3_signals):
+                  act_i = self.inverse_action(act_i) # The simplest way is to reverse specific action ,and then get the corresponding action ,duration
+                  action = self.reverse_mapping[(act_i, dur_i)]
             self._apply_actions(action)
             self._run_steps()
+            self.last_3_signals.append(act_i)
+
 
         current_observ = self.observations[self.agent_id]
         self.state = np.array(current_observ.get_state_space())
@@ -299,6 +329,20 @@ class SumoEnv(gym.Env):
                   f"Sumo Time {self.conn.getTime()}, state {self.state}, reward {reward}", end='', flush=True)
 
         self.current_step += 1
+
+        if self.enable_logs:
+          self.logs.append({
+                "time": self.conn.getTime(),
+                "signal": act_i,
+                "duration": dur_i,
+                "state": self.state,
+                "reward": reward
+            })
+          if terminated :
+            import pandas as pd
+            pd.DataFrame(self.logs).to_csv("env_logs.csv", index=False)
+
+
         return self.state, reward, terminated, False, {}
 
     def render(self, mode='human'):
@@ -334,6 +378,7 @@ class GroupedSumoEnv(SumoEnv):
         self.encoded_action_mapping = dict(zip(range(len(self.space)), self.space))
         self.action_space = gym.spaces.Discrete(len(self.space))
         self.direction_map = {"N": 0, "E": 1, "S": 2, "W": 3}
+        self.reverse_mapping = {v: k for k, v in self.encoded_action_mapping.items()}
 
     def get_all_lanes_action(self, action):
         """Map SUMO controlled lanes to the corresponding action signals."""
@@ -357,3 +402,4 @@ class HighGroupedSumoEnv(SumoEnv):
         self.space = [(a, b) for a, b in itertools.product(space_signal, self.durations)]
         self.encoded_action_mapping = dict(zip(range(len(self.space)), self.space))
         self.action_space = gym.spaces.Discrete(len(self.space))
+        self.reverse_mapping = {v: k for k, v in self.encoded_action_mapping.items()}

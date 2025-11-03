@@ -1,0 +1,27 @@
+Loading net-file from 'map.net.xml' ... done (73ms).
+Loading additional-files from 'vtypes.add.xml' ... done (8ms).
+Loading route-files incrementally from 'route.rou.xml'
+Loading done.
+Simulation started with time: 10800.00.
+Warning: Teleporting vehicle '1064.1'; waited too long (jam), lane='178936306#0_0', time=13798.00.
+Warning: Teleporting vehicle '1049.1'; waited too long (jam), lane='765377840#0_0', time=13799.00.
+Simulation ended at time: 13800.00.
+Reason: The final simulation step has been reached.
+Performance:
+ Duration: 3.85s
+ Real time factor: 779.828
+ UPS: 17773.329867
+Vehicles:
+ Inserted: 276 (Loaded: 309)
+ Running: 68
+ Waiting: 25
+ Teleports: 2 (Jam: 2)
+Statistics (avg of 208):
+ RouteLength: 1636.48
+ Speed: 13.57
+ Duration: 127.13
+ WaitingTime: 21.61
+ TimeLoss: 38.68
+ DepartDelay: 1.58
+DijkstraRouter answered 277 queries and explored 9.82 edges on average.
+DijkstraRouter spent 0.00s answering queries (0.00ms on average).

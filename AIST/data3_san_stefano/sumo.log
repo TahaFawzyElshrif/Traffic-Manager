@@ -1,0 +1,35 @@
+Loading net-file from 'map.net.xml' ... done (48ms).
+Loading additional-files from 'vtypes.add.xml' ... done (13ms).
+Loading route-files incrementally from 'route.rou.xml'
+Loading route-files incrementally from 'persons.rou.xml'
+Loading done.
+Simulation version 1.24.0 started with time: 10800.00.
+Simulation ended at time: 13800.00.
+Reason: The final simulation step has been reached.
+Performance:
+ Duration: 2.38s
+ Real time factor: 1261.56
+ UPS: 13409.167368
+ UPS-Persons: 99860.386880
+Vehicles:
+ Inserted: 181 (Loaded: 188)
+ Running: 10
+ Waiting: 0
+Persons:
+ Inserted: 180 (Loaded: 188)
+ Running: 121
+Statistics (avg of 171):
+ RouteLength: 3227.97
+ Speed: 17.61
+ Duration: 180.19
+ WaitingTime: 0.30
+ TimeLoss: 11.62
+ DepartDelay: 0.53
+Pedestrian Statistics (avg of 59 walks):
+ RouteLength: 2075.58
+ Duration: 1662.17
+ TimeLoss: 203.74
+DijkstraRouter answered 180 queries and explored 14.18 edges on average.
+DijkstraRouter spent 0.00s answering queries (0.00ms on average).
+DijkstraRouter answered 181 queries and explored 2.29 edges on average.
+DijkstraRouter spent 0.00s answering queries (0.00ms on average).

@@ -9,8 +9,8 @@ import xml.etree.ElementTree as ET
 from dotenv import load_dotenv
 import sumolib
 from Connections.Connection import Connection
-from Sensors import getSumoSensors_full, len_sensors, len_optimized_sensors
 
+len_sensors = 7
 
 # Load secrets and environment variables
 load_dotenv("keys.env")
@@ -28,7 +28,8 @@ class SumoConnection(Connection):
 
 
     def __init__(self, path_cfg, step_size=1, log_file=None, begin_time=0, end_time=None,
-                time_to_teleport=-1, waiting_time_memory=1000, max_depart=-1, seed=None):
+                time_to_teleport=1000,  max_depart=300, seed=None):
+        #last 120,300
         """
         Initialize the SUMO connection.
 
@@ -39,7 +40,6 @@ class SumoConnection(Connection):
             begin_time (int or float, optional): Simulation start time. Defaults to 0.
             end_time (int or float or None, optional): Simulation end time(Exactly End time). If None, no end time is set.
             time_to_teleport (int, optional): Max stuck time before teleportation (-1 disables). Defaults to -1.
-            waiting_time_memory (int, optional): Time window for waiting time calculation. Defaults to 1000.
             max_depart (int, optional): Max allowed vehicle departure delay (-1 disables). Defaults to -1.
             seed (int or None, optional): Random seed for simulation. If None, no seed is set.
         """
@@ -48,31 +48,57 @@ class SumoConnection(Connection):
         sumo_binary = sumolib.checkBinary('sumo')
 
         # Build command list dynamically based on passed arguments
-        self.cmd = [
-            sumo_binary,
-            "-c", path_cfg,
-            "--step-length", str(step_size),
-            "--max-depart-delay", str(max_depart),
-            "--waiting-time-memory", str(waiting_time_memory),
-            "--time-to-teleport", str(time_to_teleport),
-            "--begin", str(begin_time)
-        ]
-
-        if end_time is not None:
-            self.cmd += ["--end", str(end_time)]
-
-        if log_file:
-            self.cmd += ["--log", log_file, "--verbose", "true"]
-
-        if seed is not None:
-            self.cmd += ["--seed", str(seed)]
-
+        self.path_cfg = path_cfg
+        self.step_size = step_size
+        self.log_file = log_file
+        self.begin_time = begin_time
+        self.end_time = end_time
+        self.time_to_teleport = time_to_teleport
+        self.max_depart = max_depart
+        self.seed = seed
+        self.collision_action= "warn"
+        self.collision_check_junctions = "True"
+        self.collision_mingap_factor = "0.1"
+        self.pedestrian_striping_mingap_to_vehicle= "0.25"
+        self.weights_random_factor = "1.5"
+        self.threads = "1"
+        self.sumo_binary = sumolib.checkBinary('sumo')
+        
         self.traci_conn = None
         self.gui = False
         self.done = False
-        self.initialize()
-        self.end_time = end_time
 
+        self._build_cmd()  # Build initial command
+        self.initialize()
+
+    def _build_cmd(self):
+        """Build the SUMO command dynamically based on current attributes."""
+        self.cmd = [
+            self.sumo_binary,
+            "--no-warnings",
+            "-c", self.path_cfg,
+            "--step-length", str(self.step_size),
+            "--max-depart-delay", str(self.max_depart),
+            "--time-to-teleport", str(self.time_to_teleport),
+            "--begin", str(self.begin_time),
+            "--collision.action", self.collision_action,
+            "--collision.check-junctions",self.collision_check_junctions ,
+            "--collision.mingap-factor", self.collision_mingap_factor,
+            "--pedestrian.striping.mingap-to-vehicle", self.pedestrian_striping_mingap_to_vehicle,
+            "--weights.random-factor", self.weights_random_factor,
+            "--threads", self.threads,
+        ]
+
+        if self.end_time is not None:
+            self.cmd += ["--end", str(self.end_time)]
+
+        if self.log_file:
+            self.cmd += ["--log", self.log_file, "--verbose", "true"]
+
+        if self.seed is not None:
+            self.cmd += ["--seed", str(self.seed)]
+
+            
     def initialize(self):
         """
         Start or reuse a SUMO connection.
@@ -109,6 +135,9 @@ class SumoConnection(Connection):
         """
         Reset the SUMO connection by closing and reinitializing.
         """
+        # Rebuild the command with updated parameters
+        self._build_cmd()
+
         self.close()
         self.initialize()
 
@@ -134,7 +163,7 @@ class SumoConnection(Connection):
         if traci.simulation.getMinExpectedNumber() <= 0:
             self.done = True
 
-    def do_step_one_agent(self, agent, new_action):
+    def do_step_one_agent(self, agent, new_action,action_id):
         """
         Execute a traffic light action for one agent.
 
@@ -148,8 +177,9 @@ class SumoConnection(Connection):
 
     def get_improved_road_proj(self, agent):
         """
-        Collect aggregated road data for a traffic light.
-
+        Get State space that is used for experiments done with project reward
+        This is only used for experiments , Only implemented with Sumo Connection
+        
         Returns:
             np.array: [occupancy, vehicle count, halting count, teleports, emergency stops]
         """
