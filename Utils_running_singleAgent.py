@@ -129,3 +129,14 @@ def gcd_and_reduced(numbers):
 
     return gcf, reduced
 
+direction_map = {"N": 0, "E": 1, "S": 2, "W": 3}
+def get_lane_direction(lane_id):
+        """Determine the primary cardinal direction of a lane in SUMO."""
+        x_start, y_start = traci.lane.getShape(lane_id)[0]  # First coordinate
+        x_end, y_end = traci.lane.getShape(lane_id)[-1]     # Last coordinate
+
+        angle = math.degrees(math.atan2(y_end - y_start, x_end - x_start))
+
+        # Optimized angle-based direction mapping
+        return "E" if -45 <= angle < 45 else "N" if 45 <= angle < 135 else "W" if angle >= 135 or angle < -135 else "S"
+direction = lambda lanes: ''.join([get_lane_direction(lane_id) for lane_id in lanes])

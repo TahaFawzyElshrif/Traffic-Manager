@@ -22,7 +22,8 @@ def reward_proposed(agent, single_state, last_action, action):
     
     Parameters:
     agent (String): The agent id.
-    single_state (tuple): Contains traffic state metrics in the following order:
+    single_state (tuple): Observation Class has getStataSpace():
+    Contains traffic state metrics in the following order:
         avg_speed (float) - Average vehicle speed.
         var_speed (float) - Variance of vehicle speeds.
         avg_waiting_time (float) - Average waiting time of vehicles.
@@ -43,7 +44,7 @@ def reward_proposed(agent, single_state, last_action, action):
     scale_efficiency = 0.1
     eta = 1e-6  # To prevent division by zero
 
-    avg_speed, var_speed, avg_waiting_time, var_waiting_time, avg_throughput, avg_queue_length, avg_Occupancy = single_state
+    avg_speed, var_speed, avg_waiting_time, var_waiting_time, avg_throughput, avg_queue_length, avg_Occupancy = np.array(single_state.get_state_space())
 
     # Speed reward
     speed_term = np.log(1 + avg_speed / (var_speed + eta))
@@ -74,8 +75,8 @@ def reward_liter(agent, single_state, last_action, action):
     float: The literature based reward for the given traffic state ,Used to compare results.
     """
     conn = get_global_conn()
-    road_inf = conn.get_detailed_road_literature(agent)
-    if not road_inf:  # This covers None or an empty list
+    road_inf = single_state.get_waiting_time()  #conn.get_detailed_road_literature(agent)
+    if road_inf is None or len(road_inf) == 0:  # This covers None or an empty list
         return 0.0  # Fallback if no road information is available
 
     lambda_ = 0.15

@@ -1,253 +1,359 @@
-import pandas as pd
+import math
+import itertools
+import random
+import warnings
+from collections import deque
+
 import gymnasium as gym
 import numpy as np
+import pandas as pd
 import traci
-import warnings
-from Connections.Connection import *
 
-import math
-import itertools 
-from collections import deque
-import random
+from Connections.Connection import get_global_conn
+from Observations.sumo_obs import DefaultObservation
+from data_parser import read_road_info
 
 # Suppress deprecation warnings
 warnings.simplefilter("ignore", category=DeprecationWarning)
 
 
-class SumoEnv(gym.Env):
-    def __init__(self, traffic_light_id, count, durations, reward_fun, max_steps=50, max_sumo_steps=200,sumo_traffic_scale=1, enable_variation_action=True, config=None, seed=None):
+class Agent:
+    """
+    Represents a single traffic light agent in the SUMO environment.
+
+    Attributes:
+        env (SumoEnv): The environment instance the agent belongs to.
+        agent_id (str): The unique ID of the traffic light.
+        min_phase (int): Minimum green phase duration.
+        max_phase (int): Maximum green phase duration.
+        next_action_time (float): Time step when the next action is allowed.
+        fixed_ts (bool): Whether the traffic signal is fixed-timing.
+        is_yellow (bool): Whether the signal is currently yellow.
+        time_since_last_phase_change (int): Steps since the last phase change.
+        current_phase (int): The current traffic light phase.
+    """
+
+    def __init__(self, env, agent_id):
+        self.env = env
+        self.agent_id = agent_id
+        self.min_phase = min(self.env.durations)
+        self.max_phase = max(self.env.durations)
+        self.step_size = self.env.step_size
+
+        self.next_action_time = self.env.begin
+        self.fixed_ts = False
+        self.is_yellow = False
+        self.time_since_last_phase_change = 0
+        self.current_phase = 0
+
+    @property
+    def time_to_act(self):
+        """Check if it's time for the agent to take the next action."""
+        return (self.next_action_time == self.env.conn.getTime())
+
+    def set_next_phase(self, new_phase: int):
         """
-        Initializes the SUMO environment for a single agent.
+        Change the traffic light to a new phase.
+
+        Args:
+            new_phase (int): The phase index to set.
         """
-        super().__init__()
+        new_action, new_duration = self.env.get_real_action(new_phase)
+        current_action = self.env.get_real_action(self.current_phase)[0]
         
-        # Set random seed
+
+        # Case 1: Same phase - just continue with possibly new duration
+        if new_phase == self.current_phase:
+            
+            # If we've been in this phase too long, we might want to force a brief transition
+            # But for now, just continue the phase
+            self.env.conn.do_step_one_agent(self.agent_id, current_action)
+            
+            # Use the new duration for timing
+            self.next_action_time = self.env.conn.getTime() + new_duration * self.step_size
+        
+        # Case 2: Different phase but minimum time not met - continue current phase
+        elif self.time_since_last_phase_change < self.min_phase:
+            
+            self.env.conn.do_step_one_agent(self.agent_id, current_action)
+            
+            # Keep current phase timing
+            current_duration = self.env.get_real_action(self.current_phase)[1]
+            self.next_action_time = self.env.conn.getTime() + current_duration * self.step_size
+        
+        # Case 3: Different phase and can transition - apply yellow first
+        else:
+            
+            yellow_action = self.env.corresponding_yellow[current_action, new_action]
+            
+            self.env.conn.do_step_one_agent(self.agent_id, yellow_action)
+            
+            # Update state for yellow phase
+            self.current_phase = new_phase
+            self.is_yellow = True
+            self.time_since_last_phase_change = 0
+            
+            # Next action time includes yellow duration
+            self.next_action_time = (self.env.conn.getTime() + 
+                                  self.env.yellow_time + 
+                                  new_duration * self.step_size)
+        
+    
+    def update(self):
+        """Advance the agent's internal timer and change yellow to green if needed."""
+        self.time_since_last_phase_change += 1
+        if self.is_yellow and self.time_since_last_phase_change == self.env.yellow_time:
+            self.env.conn.do_step_one_agent(
+                self.agent_id,
+                self.env.get_real_action(self.current_phase)[0],
+                
+            )
+            self.is_yellow = False
+
+
+class SumoEnv(gym.Env):
+    """
+    SUMO single-agent traffic light control environment.
+    """
+
+    def __init__(self, data_name, durations, reward_fun,step_size=1,
+                 obs_class=DefaultObservation, path_info="info_road.csv",
+                 yellow_time=7, max_steps=50, 
+                 sumo_traffic_scale=1, enable_variation_action=True,
+                 config=None, seed=None):
+        super().__init__()
+
+        self.yellow_time = yellow_time
         self.seed_value = seed
         if seed is not None:
             random.seed(seed)
             np.random.seed(seed)
-        
+
         self.metadata = {"is_parallelizable": True, "render_modes": ["human"]}
         if config:
             self.horizon = config.get("horizon", 1)
 
+        # SUMO connection
         self.conn = get_global_conn()
+        self.begin = self.conn.getTime()
         self.observation_size = self.conn.getLenSensors()
         self.durations = durations
         self.reward_fun = reward_fun
         self.current_step = 0
         self.done_episode = False
-        
-        self.agent_id = traffic_light_id
+        self.fixed_ts = False
         self.max_steps = max_steps
-
-        self.sumo_traffic_scale=sumo_traffic_scale
-        self.max_sumo_steps = max_sumo_steps
+        self.step_size = step_size
+        self.sumo_traffic_scale = sumo_traffic_scale
         self.enable_variation_action = enable_variation_action
-        
+        self.delta_time = 1  # Default simulation step duration
+
         self.python_path = ""
         self.data_path = ""
-       
         self.last_run_dict = {}
         self.see_progress_each = 1
 
-        self.last_3_signals = deque(maxlen=3)
         self.conn.set_traffic_scale(self.sumo_traffic_scale)
-        # Initialize action space
-        self.initialize_action_space(count)
-        
-        # Initialize observation space
+
+        # Observation space
         self.observation_space = gym.spaces.Box(
-            low=-np.inf, high=np.inf, shape=(self.observation_size,), dtype=np.float32
+            low=-np.inf, high=np.inf,
+            shape=(self.observation_size,), dtype=np.float32
         )
-        
-        # Initialize state
         self.state = np.zeros(self.observation_size, dtype=np.float32)
 
+        # Load agent info
+        agent_info = read_road_info(path_info, data_name, "data")
+        self.agent_info = {agent['agent_id']: agent for agent in agent_info}
+        self.agent_id = str(list(self.agent_info.keys())[0])
+        self.agents = {self.agent_id: Agent(self, self.agent_id)}
+
+        self.count_controlled = len(self.agent_info[int(self.agent_id)]['lanes']) # int is default type at agent info  so reset in some places to prevent error
+        self.initialize_action_space(self.count_controlled)
+
+        # Observations
+        self.obs_class = obs_class
+        self.observations = {
+            self.agent_id: self.obs_class(
+                self,
+                self.agent_id,
+                self.agent_info[int(self.agent_id)]['lanes'],
+                self.agent_info[int(self.agent_id)]['edge']
+            )
+        }
+
+    def getCorrespondingYellow(self, a, b):
+        """Return a yellow phase string between two given phases."""
+        return ''.join(['y' if a[i] != b[i] else a[i] for i in range(len(a))])
+
     def initialize_action_space(self, count):
-        """
-        Creates the action space mapping for the traffic light agent.
-        """
+        """Create the action space mapping for the agent."""
         space_signal = list(map("".join, itertools.product("rg", repeat=count))) if count > 0 else ["r", "g"]
         self.space = [(a, b) for a, b in itertools.product(space_signal, self.durations)]
-
+        self.corresponding_yellow = {
+            (seg1, seg2): self.getCorrespondingYellow(seg1, seg2)
+            for seg2 in space_signal for seg1 in space_signal
+        }
         self.encoded_action_mapping = dict(zip(range(len(self.space)), self.space))
         self.action_space = gym.spaces.Discrete(len(self.space))
 
     def close(self):
-        """
-        Resets the environment state / clean resources
-        """
-        self.conn.close() 
+        """Close the environment and release resources."""
+        self.conn.close()
         self._checkFinalReset()
         self.done_episode = True
+        print("Environment closed.")
 
-        # Debug print
-        print("Environment close")
-    
     def reset(self, seed=None, options=None):
-        """
-        Resets the environment state.
-        """
-        # If a new seed is provided, update the seed value and set the seeds
+        """Reset the environment state."""
         if seed is not None:
             self.seed_value = seed
             random.seed(seed)
             np.random.seed(seed)
         elif self.seed_value is not None:
-            # Otherwise use the existing seed if one was set during initialization
             random.seed(self.seed_value)
             np.random.seed(self.seed_value)
-            
-        # Call the parent class reset with the seed
+
         super().reset(seed=seed)
 
-        self.conn.close() 
+        self.conn.close()
         self._checkFinalReset()
         self.conn.initialize()
-        #self.conn.reset()
         self.state = np.zeros(self.observation_size, dtype=np.float32)
         self.current_step = 0
         self.done_episode = False
         self.conn.set_traffic_scale(self.sumo_traffic_scale)
 
-        # Debug print
-        print("Environment reset")
-
+        # FIX: Properly reset agents after SUMO reconnection
+        self.begin = self.conn.getTime()  # Update begin time
+        
+        # Reset each agent to match new SUMO state
+        for agent_id, agent in self.agents.items():
+            agent.next_action_time = self.begin  # Allow immediate action
+            agent.time_since_last_phase_change = 0
+            agent.is_yellow = False
+            agent.current_phase = 0  # Reset to initial phase
+            
+        print("Environment reset - agents properly initialized.")
         return self.state, {}
-    
-    def _checkFinalReset(self):
-        last_run_dict = self.conn.get_sumo_statics(self.python_path, self.data_path)
-        all_zeroes = all(value == 0 for value in last_run_dict.values())
 
-        if all_zeroes:
-            pass
+    def _checkFinalReset(self):
+        """Check SUMO run statistics after reset."""
+        last_run_dict = self.conn.get_sumo_statics(self.data_path)
+        if last_run_dict is None:
+            print("⚠ Skipping episode: statistics file is corrupted or incomplete")
         else:
             self.last_run_dict = last_run_dict
-        
+
     def get_real_action(self, action):
-        """
-        Converts the action index to the actual action representation.
-        """
+        """Convert an action index to the actual SUMO signal and duration."""
         return self.encoded_action_mapping[action]
-    
-    def _all_equal(self, queue):
-        return (len(queue) == queue.maxlen) and all(x == queue[0] for x in queue)
-    
-    def _get_last_two_or_default(self, dq): #before, after
-        if len(dq) >= 2:
-            return list(dq)[-2:]
-        elif len(dq) == 1:
-            return ['', dq[-1]]
-        else:
-            return ['', '']  # Default values if deque is empty
-        
+
+    def _run_steps(self):
+        """Advance the simulation until it's time to act."""
+        time_to_act = False
+        iteration = 0
+        while not time_to_act:
+            self.conn.step()
+            iteration += 1
+            #print("------sub iteration ",iteration)
+            for ts in self.agents.values():
+                ts.update()
+                if ts.time_to_act:
+                    time_to_act = True
+            if iteration > 100:
+                print("Breaking due to too many iterations")
+                break
+            if self.conn.done:
+                break
+
+    def _apply_actions(self, actions):
+        """Apply the given actions to agents."""
+        if len(self.agents) == 1:
+            agent_obj = list(self.agents.values())[0]
+            if agent_obj.time_to_act:
+                agent_obj.set_next_phase(actions)
+
     def step(self, action):
-        """
-        Executes an action and advances the simulation by one step.
-        """
-        import time
-        start =time.time()
+        """Advance the simulation by one step given an action."""
         if self.done_episode:
-            print("Warning: Attempting to step after episode is done.")
+            print("Warning: Step called after episode ended.")
             return self.state, 0.0, True, True, {}
-        # Convert gym action to SUMO action
-        real_action, real_duration = self.get_real_action(action)
-        #self.last_3_signals.append(real_action)
 
-        if (self.enable_variation_action):
-            if (self._all_equal(self.last_3_signals)):
-                real_action = self.conn.inverse_action(real_action)
-            #it will append two times here, but in fact queue is full by one value so append logic won't be wrong
-        self.last_3_signals.append(real_action)
+        if self.fixed_ts or action is None or action == {}:
+            for _ in range(self.delta_time):
+                self.conn.step()
+        else:
+            self._apply_actions(action)
+            self._run_steps()
 
-        # Execute action in SUMO
-        agent_steps_done = (self.conn.do_step_one_agent(
-            self.agent_id, 
-            real_action, 
-            real_duration, 
-            self.max_sumo_steps, 
-            self.current_step
-        ))
-        
-        # Get new state
-        self.state = np.array(self.conn.getCurrentState(self.agent_id))
-        
-        # Calculate reward
-        before_action, new_action = self._get_last_two_or_default(self.last_3_signals)
-        reward = self.reward_fun(self.agent_id, self.state, before_action, new_action)
-        
-        # Check if done
-        self.done_episode = (self.current_step >= self.max_steps) or agent_steps_done
+        current_observ = self.observations[self.agent_id]
+        self.state = np.array(current_observ.get_state_space())
+        reward = self.reward_fun(self.agent_id, current_observ, None, None)
+
+        self.done_episode = (self.current_step >= self.max_steps) or (self.conn.done)
         terminated = self.done_episode
-        
-        
-        # Print progress
-        if ((self.see_progress_each>0) and (((self.current_step+1)%self.see_progress_each)==0)):
-            
-            print(f"\rProgress: {self.current_step+1}/{min(self.max_steps,self.max_sumo_steps)}, Sumo Time {self.conn.getTime()}, state {self.state}, action {real_action}, duration {real_duration}, reward {reward}", end='', flush=True)
-        
-        # Increment step counter
+
+        if self.see_progress_each > 0 and (self.current_step + 1) % self.see_progress_each == 0:
+            print(f"\rProgress: {self.current_step+1}/{self.max_steps}, "
+                  f"Sumo Time {self.conn.getTime()}, state {self.state}, reward {reward}", end='', flush=True)
+
         self.current_step += 1
-        
         return self.state, reward, terminated, False, {}
 
     def render(self, mode='human'):
-        """
-        Prints the current state of the environment.
-        """
-        print(f"State: {self.state}, TO SEE Rendered GUI, run sumo gui")
+        """Print the current state (GUI rendering is SUMO's responsibility)."""
+        print(f"State: {self.state}, TO SEE Rendered GUI, run SUMO GUI.")
 
 
 class GroupedSumoEnv(SumoEnv):
-    def __init__(self, traffic_light_id, count, durations, reward_fun, max_steps=50, max_sumo_steps=200, sumo_traffic_scale=1, enable_variation_action=True, config=None, seed=None):
-        super().__init__(traffic_light_id, count, durations, reward_fun, max_steps, max_sumo_steps,sumo_traffic_scale,  enable_variation_action, config, seed)
+    """SUMO environment for grouped traffic light control."""
+    def __init__(self, data_name, durations, reward_fun,step_size=1,
+                 obs_class=DefaultObservation, path_info="info_road.csv",
+                 yellow_time=7, max_steps=50, 
+                 sumo_traffic_scale=1, enable_variation_action=True,
+                 config=None, seed=None):
+                 
+        super().__init__(data_name, durations, reward_fun,step_size,
+                 obs_class, path_info,
+                 yellow_time, max_steps,
+                 sumo_traffic_scale, enable_variation_action,
+                 config, seed)
+
+        self.agent_directions = self.agent_info[int(self.agent_id)]['direction_lanes']
+
+                         
 
     def initialize_action_space(self, count):
         space_signal = list(map("".join, itertools.product("rg", repeat=4)))
+        self.corresponding_yellow = {
+            (seg1, seg2): self.getCorrespondingYellow(seg1, seg2)
+            for seg2 in space_signal for seg1 in space_signal
+        }
         self.space = [(a, b) for a, b in itertools.product(space_signal, self.durations)]
         self.encoded_action_mapping = dict(zip(range(len(self.space)), self.space))
         self.action_space = gym.spaces.Discrete(len(self.space))
-
-    def get_lane_direction(self, lane_id):
-        """Determine the primary cardinal direction of a lane in SUMO."""
-        x_start, y_start = traci.lane.getShape(lane_id)[0]  # First coordinate
-        x_end, y_end = traci.lane.getShape(lane_id)[-1]     # Last coordinate
-
-        angle = math.degrees(math.atan2(y_end - y_start, x_end - x_start))
-
-        # Optimized angle-based direction mapping
-        return "E" if -45 <= angle < 45 else "N" if 45 <= angle < 135 else "W" if angle >= 135 or angle < -135 else "S"
+        self.direction_map = {"N": 0, "E": 1, "S": 2, "W": 3}
 
     def get_all_lanes_action(self, action):
         """Map SUMO controlled lanes to the corresponding action signals."""
-        direction_map = {"N": 0, "E": 1, "S": 2, "W": 3}
-        
-        controlled_lanes = traci.trafficlight.getControlledLanes(self.agent_id)
-        real_action_dict = {}
+        return "".join([action[self.direction_map[dir_]] for dir_ in self.agent_directions])
 
-        try:
-            real_action_list = [
-                action[direction_map[dir]] for lane in controlled_lanes if (dir := self.get_lane_direction(lane)) in direction_map
-            ]
-        except IndexError:
-            raise ValueError(f"Invalid action index for action: {action}")
-
-        return "".join(real_action_list), real_action_dict
-    
     def get_real_action(self, action):
+        """Convert action index to real grouped lane action."""
         action_agent_lanes, duration = self.encoded_action_mapping[action]
-        real_action = self.get_all_lanes_action(action_agent_lanes)[0]
+        real_action = self.get_all_lanes_action(action_agent_lanes)
         return real_action, duration
 
 
 class HighGroupedSumoEnv(SumoEnv):
-    def __init__(self, traffic_light_id, count, durations, reward_fun, max_steps=50, max_sumo_steps=200,  sumo_traffic_scale=1,enable_variation_action=True, config=None, seed=None):
-        super().__init__(traffic_light_id, count, durations, reward_fun, max_steps, max_sumo_steps, sumo_traffic_scale, enable_variation_action, config, seed)
-
+    """SUMO environment with simplified two-phase signals."""
     def initialize_action_space(self, count):
-        space_signal = ["r"*count, "g"*count] if (count > 0) else ["r", "g"]
+        space_signal = ["r"*count, "g"*count] if count > 0 else ["r", "g"]
+        self.corresponding_yellow = {
+            (seg1, seg2): self.getCorrespondingYellow(seg1, seg2)
+            for seg2 in space_signal for seg1 in space_signal
+        }
         self.space = [(a, b) for a, b in itertools.product(space_signal, self.durations)]
-
         self.encoded_action_mapping = dict(zip(range(len(self.space)), self.space))
         self.action_space = gym.spaces.Discrete(len(self.space))
