@@ -1,0 +1,21 @@
+<configuration>
+    <input>
+        <net-file value="map.net.xml"/>
+        <route-files value="route.rou.xml"/>
+    </input>
+    <time>
+        <begin value="0"/>
+        <end value="100000"/>
+    </time>
+    <output>
+        <statistic-output value="osm.statistics.xml"/>
+
+        <queue-output value="queues.xml" freq="60"/>
+
+    </output>
+    <report>
+        <verbose value="true"/>
+        <duration-log.statistics value="true"/>
+        <no-step-log value="true"/>
+    </report>
+</configuration>

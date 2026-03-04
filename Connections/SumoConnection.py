@@ -121,6 +121,9 @@ class SumoConnection(Connection):
             traci.start(self.cmd)
             self.traci_conn = traci.getConnection()
         self.done = False
+
+       
+
     def close(self):
         """
         Close the SUMO connection if it exists.

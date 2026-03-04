@@ -95,6 +95,43 @@ algorithms_settings:
       batch_size: 32
       net_arch: 256
       best_value: 0.2329678535461425
+    Bench(2waySingle)_HighGroupedSumoEnv_proposed_reward:
+      learning_rate: 0.0003
+      gamma: .99
+      gae_lambda: 0.95
+      ent_coef: 0.0
+      clip_range: .2
+      batch_size: 64
+      net_arch: 64
+      best_value: 1.249375581741333
+    Bench(2waySingle)_HighGroupedSumoEnv_literature_reward:
+      learning_rate: 0.0003
+      gamma: .99
+      gae_lambda: 0.95
+      ent_coef: 0.0
+      clip_range: .2
+      batch_size: 64
+      net_arch: 64
+      best_value: 1.249375581741333
+    Bench(2waySingle)_GroupedSumoEnv_proposed_reward:
+      learning_rate: 0.0003
+      gamma: .99
+      gae_lambda: 0.95
+      ent_coef: 0.0
+      clip_range: .2
+      batch_size: 64
+      net_arch: 64
+      best_value: 1.249375581741333
+    Bench(2waySingle)_GroupedSumoEnv_literature_reward:
+      learning_rate: 0.0003
+      gamma: .99
+      gae_lambda: 0.95
+      ent_coef: 0.0
+      clip_range: .2
+      batch_size: 64
+      net_arch: 64
+      best_value: 1.249375581741333
+    
   D3QN:
     Mosheer_GroupedSumoEnv_literature_reward:
       learning_rate: 0.0005340578928235891
@@ -160,7 +197,38 @@ algorithms_settings:
       epsilon_decay: 0.04789180763226738
       batch_size: 64
       best_value: 2.304375174277133
-
+    Bench(2waySingle)_HighGroupedSumoEnv_proposed_reward:
+      learning_rate: 0.001
+      gamma: 0.99
+      tau: 0.001
+      l2_reg: 0.001
+      epsilon_decay: 0.995
+      batch_size: 64
+      best_value: 0.0
+    Bench(2waySingle)_GroupedSumoEnv_proposed_reward:
+      learning_rate: 0.001
+      gamma: 0.99
+      tau: 0.001
+      l2_reg: 0.001
+      epsilon_decay: 0.995
+      batch_size: 64
+      best_value: 0.0
+    Bench(2waySingle)_HighGroupedSumoEnv_literature_reward:
+      learning_rate: 0.001
+      gamma: 0.99
+      tau: 0.001
+      l2_reg: 0.001
+      epsilon_decay: 0.995
+      batch_size: 64
+      best_value: 0.0
+    Bench(2waySingle)_GroupedSumoEnv_literature_reward:
+      learning_rate: 0.001
+      gamma: 0.99
+      tau: 0.001
+      l2_reg: 0.001
+      epsilon_decay: 0.995
+      batch_size: 64
+      best_value: 0.0
 
   Sumorl_Mosheer_literature_reward_d3qn:
     learning_rate: 0.00013818289879346935
@@ -230,12 +298,43 @@ algorithms_settings:
     batch_size: 128
     net_arch: 64
     best_value: 0.0
-
-
+  Sumorl_Bench(2waySingle)_proposed_reward_ppo:
+    learning_rate: 0.0003
+    gamma: .99
+    gae_lambda: 0.95
+    ent_coef: 0.0
+    clip_range: .2
+    batch_size: 64
+    net_arch: 64
+    best_value: 1.249375581741333
+  Sumorl_Bench(2waySingle)_proposed_reward_d3qn:
+    learning_rate: 0.001
+    gamma: 0.99
+    tau: 0.001
+    l2_reg: 0.001
+    epsilon_decay: 0.995
+    batch_size: 64
+    best_value: 0.0
+  Sumorl_Bench(2waySingle)_literature_reward_ppo:
+    learning_rate: 0.0003
+    gamma: .99
+    gae_lambda: 0.95
+    ent_coef: 0.0
+    clip_range: .2
+    batch_size: 64
+    net_arch: 64
+    best_value: 1.249375581741333
+  Sumorl_Bench(2waySingle)_literature_reward_d3qn:
+    learning_rate: 0.001
+    gamma: 0.99
+    tau: 0.001
+    l2_reg: 0.001
+    epsilon_decay: 0.995
+    batch_size: 64
+    best_value: 0.0
 
 
 experiment_settings:
-  
   const_settings:
     durations:
       #- 1
@@ -244,7 +343,7 @@ experiment_settings:
       - 30
       - 60
       - 90 
-    max_steps: 10000
+    max_steps: 100000
     n_episode_evaluation: 5
     larger_evaluation: 10800
     n_env : 1

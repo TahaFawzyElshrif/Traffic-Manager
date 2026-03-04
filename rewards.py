@@ -37,20 +37,23 @@ def reward_proposed(agent, single_state, last_action, action):
     Returns:
     float: Our Proposed reward for the given traffic state.
     """
-    MAX_THROUGHPUT = 50.0
-    MAX_QUEUE = 30.0
-    MAX_SPEED = 60.0
-    MAX_WAITING = 120.0
+    MAX_THROUGHPUT = 50.0 
+    MAX_QUEUE = 20.0 
+    MAX_WAITING = 300.0 # 5 min * 60 sec is max waiting time
+    MAX_SPEED = 30.0 # 30 m/s is max as shown in SUMO 
+    Q_MIN = 5 
 
-    w1 = 0.6
-    w2 = 0.4
-    
-    scale_speed=1
-    scale_waiting=1
-    scale_efficiency =1
-    eta = 1e-6  # To prevent division by zero
+
+    w1 = 0.3
+    w2 = 0.7
+    scale_efficiency = 4
+    scale_waiting =  3
+    scale_speed = 3 
+
+
 
     avg_speed, var_speed, avg_waiting_time, var_waiting_time, avg_throughput, avg_queue_length, avg_Occupancy = np.array(single_state.get_state_space())
+
 
     # Speed reward
     speed_norm = avg_speed / MAX_SPEED  # 0 to 1
@@ -60,16 +63,17 @@ def reward_proposed(agent, single_state, last_action, action):
 
     # Waiting time penalty
     waiting_norm = avg_waiting_time / MAX_WAITING  # 0 to 1
-    variance_penalty_wait = 1 / (1 + var_waiting_time)
-    waiting_term = waiting_norm * variance_penalty_wait
-    
+    variance_penalty_wait =  (1 + var_waiting_time)
+    waiting_norm = np.clip(avg_waiting_time / MAX_WAITING, 0, 1)
+    waiting_term = -np.log1p(waiting_norm * variance_penalty_wait + 1e-6)
+ 
     # Traffic efficiency metric
-    traffic_efficiency = (w1/MAX_THROUGHPUT * avg_throughput) - (w2/MAX_QUEUE * avg_queue_length)
+    traffic_efficiency = ((w1/MAX_THROUGHPUT) * avg_throughput) - ((w2/MAX_QUEUE) * (avg_queue_length - Q_MIN))
 
     # Final reward formula
-    independent_part_reward = scale_speed * speed_term - (scale_waiting * waiting_term) + (scale_efficiency * traffic_efficiency)
-
+    independent_part_reward = scale_speed * speed_term + (scale_waiting * waiting_term) + (scale_efficiency * traffic_efficiency)
     return independent_part_reward
+
 
 # Reward function based on literature data from the road network
 def reward_liter(agent, single_state, last_action, action):

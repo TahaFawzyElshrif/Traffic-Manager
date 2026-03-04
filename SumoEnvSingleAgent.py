@@ -30,7 +30,7 @@ class Agent:
         fixed_ts (bool): Whether the traffic signal is fixed-timing.
         is_yellow (bool): Whether the signal is currently yellow.
         time_since_last_phase_change (int): Steps since the last phase change.
-        current_phase (int): The current traffic light phase.
+        current_phase_id (int): The current traffic light phase.
     """
 
     def __init__(self, env, agent_id):
@@ -44,7 +44,7 @@ class Agent:
         self.fixed_ts = False
         self.is_yellow = False
         self.time_since_last_phase_change = 0
-        self.current_phase = 0
+        self.current_phase_id = 0
 
         
 
@@ -54,64 +54,66 @@ class Agent:
         """Check if it's time for the agent to take the next action."""
         return (self.next_action_time == self.env.conn.getTime())
 
-    def set_next_phase(self, new_phase: int):
+    def set_next_phase(self, new_phase_id: int):
         """
         Change the traffic light to a new phase.
 
         Args:
-            new_phase (int): The phase index to set.
+            new_phase_id (int): The phase index to set (= action number).
         """
-        new_action, new_duration = self.env.get_real_action(new_phase)
-        current_action = self.env.get_real_action(self.current_phase)[0]
+        new_action, new_duration = self.env.get_real_action(new_phase_id)
+        current_action, old_duration = self.env.get_real_action(self.current_phase_id)
         
 
         # Case 1: Same phase - just continue with possibly new duration
-        if new_phase == self.current_phase:
-            
-            # If we've been in this phase too long, we might want to force a brief transition
-            # But for now, just continue the phase
-            self.env.conn.do_step_one_agent(self.agent_id, current_action,new_phase)
+        if  new_action == current_action :
+            self.env.conn.do_step_one_agent(self.agent_id, current_action,new_action) # or current_action but just to be clear with duration
             
             # Use the new duration for timing
             self.next_action_time = self.env.conn.getTime() + new_duration * self.step_size
-        
-        # Case 2: Different phase but minimum time not met - continue current phase
-        elif self.time_since_last_phase_change < self.min_phase:
-            
-            self.env.conn.do_step_one_agent(self.agent_id, current_action,new_phase)
-            
-            # Keep current phase timing
-            current_duration = self.env.get_real_action(self.current_phase)[1]
-            self.next_action_time = self.env.conn.getTime() + current_duration * self.step_size
-        
+
+            '''
+            # Case 2: Different phase but minimum time not met - continue current phase
+            elif self.time_since_last_phase_change < self.min_phase:
+                
+                self.env.conn.do_step_one_agent(self.agent_id, current_action,new_phase_id)
+                
+                # Keep current phase timing
+                current_duration = self.env.get_real_action(self.current_phase_id)[1]
+                self.next_action_time = self.env.conn.getTime() + current_duration * self.step_size
+            '''
         # Case 3: Different phase and can transition - apply yellow first
         else:
+
+            if isinstance(getattr(self.env, "unwrapped", self.env), GroupedSumoEnv):
+                yellow_action_of_groubs = self.env.getCorrespondingYellow(self.env.get_real_group(new_phase_id)[0], self.env.get_real_group(self.current_phase_id)[0])
+                yellow_action = self.env.getFullAction_FromGroup(yellow_action_of_groubs)
+            else:
+                yellow_action = self.env.getCorrespondingYellow(current_action, new_action)
             
-            yellow_action = self.env.corresponding_yellow[current_action, new_action]
-            
-            self.env.conn.do_step_one_agent(self.agent_id, yellow_action,new_phase)
+
+            self.env.conn.do_step_one_agent(self.agent_id, yellow_action,0)
             
             # Update state for yellow phase
-            self.current_phase = new_phase
+            self.current_phase_id = new_phase_id
             self.is_yellow = True
             self.time_since_last_phase_change = 0
-            
             # Next action time includes yellow duration
             self.next_action_time = (self.env.conn.getTime() + 
                                   self.env.yellow_time + 
                                   new_duration * self.step_size)
-        
-    
+
     def update(self):
         """Advance the agent's internal timer and change yellow to green if needed."""
-        self.time_since_last_phase_change += 1
+        self.time_since_last_phase_change += self.step_size
         if self.is_yellow and self.time_since_last_phase_change == self.env.yellow_time:
-            self.env.conn.do_step_one_agent(
+          
+          self.env.conn.do_step_one_agent(
                 self.agent_id,
-                self.env.get_real_action(self.current_phase)[0],
-                self.current_phase
+                self.env.get_real_action(self.current_phase_id)[0],
+                self.current_phase_id 
             )
-            self.is_yellow = False
+          self.is_yellow = False
 
 
 class SumoEnv(gym.Env):
@@ -126,7 +128,7 @@ class SumoEnv(gym.Env):
                  config=None, seed=None):
         super().__init__()
 
-        self.yellow_time = yellow_time
+        self.yellow_time = yellow_time * step_size
         self.seed_value = seed
         if seed is not None:
             random.seed(seed)
@@ -149,7 +151,7 @@ class SumoEnv(gym.Env):
         self.step_size = step_size
         self.sumo_traffic_scale = sumo_traffic_scale
         self.enable_variation_action = enable_variation_action
-        self.delta_time = 1  # Default simulation step duration
+        #self.delta_time = 1  # Default simulation step duration
         self.enable_logs=True
         if( self.enable_logs==True):
           self.logs = []
@@ -171,23 +173,24 @@ class SumoEnv(gym.Env):
 
         # Load agent info
         agent_info = read_road_info(path_info, data_name, "data")
-        self.agent_info = {agent['agent_id']: agent for agent in agent_info}
+        self.agent_info = {str(agent['agent_id']): agent for agent in agent_info}
         self.agent_id = str(list(self.agent_info.keys())[0])
         self.agents = {self.agent_id: Agent(self, self.agent_id)}
-
-        self.count_controlled = len(self.agent_info[int(self.agent_id)]['lanes']) # int is default type at agent info  so reset in some places to prevent error
+        self.count_controlled = len(self.agent_info[str(self.agent_id)]['lanes']) # int is default type at agent info  so reset in some places to prevent error
         self.initialize_action_space(self.count_controlled)
 
-        # Observations
+        #c Observations
         self.obs_class = obs_class
         self.observations = {
             self.agent_id: self.obs_class(
                 self,
                 self.agent_id,
-                self.agent_info[int(self.agent_id)]['lanes'],
-                self.agent_info[int(self.agent_id)]['edge']
+                self.agent_info[str(self.agent_id)]['lanes'],
+                self.agent_info[str(self.agent_id)]['edge']
             )
         }
+
+        
 
     def getCorrespondingYellow(self, a, b):
         """Return a yellow phase string between two given phases."""
@@ -244,7 +247,8 @@ class SumoEnv(gym.Env):
             agent.next_action_time = self.begin  # Allow immediate action
             agent.time_since_last_phase_change = 0
             agent.is_yellow = False
-            agent.current_phase = 0  # Reset to initial phase
+            agent.current_phase_id = 0  # Reset to initial phase
+            
             
         if( self.enable_logs==True):
           pd.DataFrame(self.logs).to_csv("env_logs.csv", index=False)
@@ -271,6 +275,7 @@ class SumoEnv(gym.Env):
         iteration = 0
         while not time_to_act:
             self.conn.step()
+
             iteration += 1
             #print("------sub iteration ",iteration)
             for ts in self.agents.values():
@@ -283,12 +288,12 @@ class SumoEnv(gym.Env):
             if self.conn.done:
                 break
 
-    def _apply_actions(self, actions):
+    def _apply_actions(self, action_id):
         """Apply the given actions to agents."""
         if len(self.agents) == 1:
             agent_obj = list(self.agents.values())[0]
             if agent_obj.time_to_act:
-                agent_obj.set_next_phase(actions)
+                agent_obj.set_next_phase(action_id)
                 
     def inverse_action(self, action_str: str) -> str:
         """
@@ -299,20 +304,29 @@ class SumoEnv(gym.Env):
     def step(self, action):
         """Advance the simulation by one step given an action."""
         act_i,dur_i = self.get_real_action(action)
+        
 
         if self.done_episode:
             print("Warning: Step called after episode ended.")
             return self.state, 0.0, True, True, {}
 
         if self.fixed_ts or action is None or action == {}:
-            for _ in range(self.delta_time):
+            for _ in range(self.step_size):#delta_time):
                 self.conn.step()
         else:
             if self.enable_variation_action: # If enabled variation only use the queue ,otherwise not use
                 if self._all_equal(self.last_3_signals):
-                  act_i = self.inverse_action(act_i) # The simplest way is to reverse specific action ,and then get the corresponding action ,duration
-                  action = self.reverse_mapping[(act_i, dur_i)]
-            self._apply_actions(action)
+                    # The simplest way is to reverse specific action ,and then get the corresponding action ,duration
+                  
+                    if isinstance(getattr(self, "unwrapped", self), GroupedSumoEnv):
+                        # For groubed it should map it to the groub first, otherwise won't found in inverse_action 
+                        act_i = self.get_real_group(action)[0]
+                        act_i = self.inverse_action(act_i)
+                    else:
+                        act_i = self.inverse_action(act_i) 
+
+                    action = self.reverse_mapping[(act_i, dur_i)]
+            self._apply_actions(action) 
             self._run_steps()
             self.last_3_signals.append(act_i)
 
@@ -342,7 +356,6 @@ class SumoEnv(gym.Env):
             import pandas as pd
             pd.DataFrame(self.logs).to_csv("env_logs.csv", index=False)
 
-
         return self.state, reward, terminated, False, {}
 
     def render(self, mode='human'):
@@ -364,7 +377,7 @@ class GroupedSumoEnv(SumoEnv):
                  sumo_traffic_scale, enable_variation_action,
                  config, seed)
 
-        self.agent_directions = self.agent_info[int(self.agent_id)]['direction_lanes']
+        self.agent_directions = self.agent_info[str(self.agent_id)]['direction_lanes']
 
                          
 
@@ -383,16 +396,26 @@ class GroupedSumoEnv(SumoEnv):
     def get_all_lanes_action(self, action):
         """Map SUMO controlled lanes to the corresponding action signals."""
         return "".join([action[self.direction_map[dir_]] for dir_ in self.agent_directions])
-
-    def get_real_action(self, action):
-        """Convert action index to real grouped lane action."""
+    
+    def get_real_group(self, action):
+        """Convert action index to courresponding lane action (light per groub)."""
         action_agent_lanes, duration = self.encoded_action_mapping[action]
+        return action_agent_lanes, duration   
+
+    def getFullAction_FromGroup(self, action_agent_lanes):
+        real_action = self.get_all_lanes_action(action_agent_lanes)
+        return real_action
+    
+    def get_real_action(self, action):
+        """Convert action index to real full lane action (light per each lane)."""
+        action_agent_lanes, duration = self.get_real_group(action)
         real_action = self.get_all_lanes_action(action_agent_lanes)
         return real_action, duration
 
 
 class HighGroupedSumoEnv(SumoEnv):
     """SUMO environment with simplified two-phase signals."""
+
     def initialize_action_space(self, count):
         space_signal = ["r"*count, "g"*count] if count > 0 else ["r", "g"]
         self.corresponding_yellow = {

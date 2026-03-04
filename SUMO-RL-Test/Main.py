@@ -80,6 +80,7 @@ from Callbacks import *
 enable_optuna = parser_args.optuna
 begin_time = 10800
 n_larger_step = 10800
+larg_eval_enable = True
 yellow_time = 30
 min_green = 17 # min duration
 max_green = 90 # max duration
@@ -95,7 +96,7 @@ next_sheet_row = clean_dict_values(next_sheet_row)
 
 data_name = next_sheet_row['Area'] 
 n_epsiode = int(next_sheet_row['Episodes']) 
-seed = int(next_sheet_row['Seed']) 
+seed =  int(next_sheet_row['Seed']) 
 REWARD_TYPE = next_sheet_row['Reward']
 algorithm = next_sheet_row['Algorithm']
 
@@ -109,10 +110,6 @@ sumo_traffic_scale = round(1+precent_scale,2)#int(10 * precent_scale)
 
 
 
-print(Fore.RED + f"CURRENT Experiment -- Data: {data_name} | Reward: {REWARD_TYPE} | "
-                 f"Algorithm: {algorithm} | Episodes: {n_epsiode} | Begin {begin_time} , End: {end_time} ({n_step} seconds) | "
-                 f"Traffic Scale: {sumo_traffic_scale} | Seed: {seed}" + Style.RESET_ALL)
-
 MODEL_NAME = f"{data_name}_{REWARD_TYPE}_{algorithm}_{sumo_traffic_scale}_{seed}"
 SAVE_PATH = path_project_folder+f"/OUTPUT/SUMO_RL_{MODEL_NAME}/" if save_parameters else ""
 if save_parameters:
@@ -125,8 +122,9 @@ with open(yaml_file, "r") as file_:
 
 algorithm_settings = config["algorithms_settings"]
 
-ppo_settings = algorithm_settings[f"Sumorl_{data_name}_{REWARD_TYPE}_reward_ppo"] # assume GroupedSumoEnv most relate
-d3qn_settings = algorithm_settings[f"Sumorl_{data_name}_{REWARD_TYPE}_reward_d3qn"] # assume GroupedSumoEnv most relate
+if data_name != "Bench(2waySingle)":
+    ppo_settings = algorithm_settings[f"Sumorl_{data_name}_{REWARD_TYPE}_reward_ppo"] # assume GroupedSumoEnv most relate
+    d3qn_settings = algorithm_settings[f"Sumorl_{data_name}_{REWARD_TYPE}_reward_d3qn"] # assume GroupedSumoEnv most relate
 
 
 experiment_settings_const = config["experiment_settings"]["const_settings"]
@@ -140,15 +138,32 @@ larger_evaluation = experiment_settings_const["larger_evaluation"]
 #################################################################
 if data_name == 'Mosheer':
     path_data = path_project_folder + "AIST/data2_mosheerIsmail/"
+
+
+elif data_name == "Bench(2waySingle)":
+    path_data = path_project_folder + "AIST/2waySingle/"
+    begin_time = 0
+    n_step = int(1e5 - begin_time)
+    end_time = begin_time + n_step
+    larger_evaluation = 1e5 # Increase as used later to be max step 
+    n_episode_evaluation = 1
+    larg_eval_enable = False
+
 else:
     path_data = path_project_folder + "AIST/data3_san_stefano/"
 
 
+
 if REWARD_TYPE.lower() == 'proposed':
     reward_fun = sumo_rl_proposed_reward
-else:
+elif REWARD_TYPE.lower() == "literature":
     reward_fun = sumo_rl_literature_reward
-print("USING REWARD: ",reward_fun)
+else:
+    reward_fun = "diff-waiting-time"
+print(Fore.RED + f"CURRENT Experiment -- Data: {data_name} | Reward: {REWARD_TYPE} | "
+                 f"Algorithm: {algorithm} | Episodes: {n_epsiode} | Begin {begin_time} , End: {end_time} ({n_step} seconds) | "
+                 f"Traffic Scale: {sumo_traffic_scale} | Seed: {seed}" + Style.RESET_ALL)
+
 
 
 #################################################################
@@ -162,6 +177,21 @@ path_stat = path_data+"osm.statistics.xml"
 path_trip = path_data+"tripinfo.xml" 
 log_dir = path_project_folder+"log_dir/"
 
+if data_name == "Bench(2waySingle)":
+    additional_sumo_cmd = f"--no-warnings -e {begin_time+n_step} --statistic-output {path_stat} --tripinfo-output {path_trip} --scale {sumo_traffic_scale} --step-length {1} --collision.action warn --threads 1 --log sumo.log"
+    max_depart_delay = -1
+    time_to_teleport = 300
+
+    yellow_time = 2
+    min_green = 5 # min duration
+    max_green = 50 # max duration
+    delta_time = 28 # average durations
+else:
+    additional_sumo_cmd = f"--no-warnings -e {begin_time+n_step} --statistic-output {path_stat} --tripinfo-output {path_trip} --scale {sumo_traffic_scale} --step-length {1} --collision.action warn --collision.check-junctions True --collision.mingap-factor 0.1 --pedestrian.striping.mingap-to-vehicle 0.25 --weights.random-factor 1.5 --threads 1 --log sumo.log"
+    max_depart_delay = 300
+    time_to_teleport = 1000
+
+    
 #################################################################
 # Train
 #################################################################
@@ -180,22 +210,20 @@ parameters = {
     "route_file": path_rou,
     "single_agent": True,
     "use_gui": False,
-    "delta_time": delta_time,
+    #"delta_time": delta_time,
     "min_green":min_green,
-    "max_green":max_green,
+    "max_green":max_green, 
     "yellow_time": yellow_time,
     "begin_time":begin_time ,
     "num_seconds": n_step,
     "reward_fn": reward_fun,
     "sumo_seed":seed,
     "observation_class":SumoRL_State_Wrapper,
-    "max_depart_delay":300,
-    "time_to_teleport":1000,
+    "max_depart_delay":max_depart_delay,
+    "time_to_teleport":time_to_teleport,
 
-    "additional_sumo_cmd": f"--no-warnings -e {begin_time+n_step} --statistic-output {path_stat} --tripinfo-output {path_trip} --scale {sumo_traffic_scale} --step-length {1} --collision.action warn --collision.check-junctions True --collision.mingap-factor 0.1 --pedestrian.striping.mingap-to-vehicle 0.25 --weights.random-factor 1.5 --threads 1 --log sumo.log"
+    "additional_sumo_cmd":additional_sumo_cmd
 }
-
-
 
 
 
@@ -203,6 +231,91 @@ parameters = {
 #################################################################
 # PPO
 #################################################################
+if algorithm == 'dqn':
+      def make_env():
+         return SumoEnvironment(**parameters)    
+
+      print(Fore.BLUE + "Initializing DQN..." + Style.RESET_ALL)
+      
+      env = make_env()
+      #env = DummyVecEnv([lambda: env])
+
+      env.reset()
+      model = DQN(
+            env=env,
+            policy="MlpPolicy",
+            learning_rate=0.001,
+            learning_starts=0,
+            train_freq=1,
+            target_update_interval=500,
+            exploration_initial_eps=0.05,
+            exploration_final_eps=0.01,
+            verbose=1,
+      )
+          
+      
+      callback = Stable_RewardCallback(max_episodes=n_epsiode)
+
+      print(Fore.BLUE + "Begin Training DQN..." + Style.RESET_ALL)
+      time_before = time.time()
+      model.learn(total_timesteps=1e6, callback=callback)
+      time_after = time.time()
+      
+
+      rewards = callback.episode_rewards
+      last_cumulative_reward = round(rewards[-1], 3)
+      
+
+      #env.save(os.path.join(SAVE_PATH, "vecnormalize.pkl"))
+      env.close()
+      results_dict_large_eval = get_sumo_statics(path_data)
+      print(f"Eval METRICES {results_dict_large_eval}")
+
+      # Set the max sumo time to max possible time used in evaluation + additional time ,this to prevent sumo automatic reset after end which clear osm file
+      # additional things are made to prevent this situation , as looping with large n time but stop when reaching max wanted time
+
+      
+      parameters['num_seconds'] = larger_evaluation+1000
+      parameters["additional_sumo_cmd"]= f"--no-warnings -e {begin_time+larger_evaluation+1000} --statistic-output {path_stat} --tripinfo-output {path_trip} --scale {sumo_traffic_scale} --step-length {1} --collision.action warn --collision.check-junctions True --collision.mingap-factor 0.1 --pedestrian.striping.mingap-to-vehicle 0.25 --weights.random-factor 1.5 --threads 1 --log sumo.log"
+
+      print(Fore.BLUE + f"Begin Evaluating PPO On Same Time..."+ Style.RESET_ALL)
+
+      rewards_evaluated_envs = []
+
+      results_dict = {}
+      for j in range(n_episode_evaluation):
+            eval_env = SumoEnvironment(**parameters)
+            #eval_env = DummyVecEnv([lambda: eval_env])
+            #eval_env = VecNormalize.load(os.path.join(SAVE_PATH, "vecnormalize.pkl"), eval_env)
+
+            obs,info = eval_env.reset()
+            c_reward = 0
+
+
+            for i in range(100000+1000):
+                              # Not using 'done' here because yellow_time and delta_time make it hard to control the exact end time.
+                              # This loop is only for benchmarking purposes, so it's fine.
+                              # It may cause 'tcpip::Socket::recvAndCheck @ recv: peer shutdown' when SUMO closes automatically.
+
+                              action, _ = model.predict(obs, deterministic=True)
+                              obs, reward, done, _,_ = eval_env.step(action)
+                              c_reward += reward
+                              if traci.simulation.getTime() % 1000 == 0:
+                                print(traci.simulation.getTime(), "of", (begin_time + n_step))
+
+                              if done:
+                                break
+                              if ( traci.simulation.getTime() >= (begin_time + n_step)):
+                                break
+
+            eval_env.close()
+            results_dict = get_sumo_statics(path_data)
+            rewards_evaluated_envs.append(c_reward)
+            
+      print(f"  {results_dict}")
+      avg_reward_evaluated = sum(rewards_evaluated_envs)/len(rewards_evaluated_envs)
+
+      
 
 if algorithm == 'PPO':
   # ----------------------------
@@ -304,7 +417,7 @@ if algorithm == 'PPO':
       
       
       model = PPO(
-                              "MlpPolicy", vec_env,
+                  "MlpPolicy", vec_env,
                               learning_rate=ppo_settings['learning_rate'],
                               gamma=ppo_settings['gamma'],
                               gae_lambda=ppo_settings['gae_lambda'],
@@ -378,37 +491,37 @@ if algorithm == 'PPO':
       avg_reward_evaluated = sum(rewards_evaluated_envs)/len(rewards_evaluated_envs)
 
       
+      if larg_eval_enable:
+          print(Fore.BLUE + f"Begin Evaluating PPO For Larger Time {larger_evaluation/60} M..."+ Style.RESET_ALL)
+    
+          eval_env = SumoEnvironment(**parameters)
+          vec_eval_env = DummyVecEnv([lambda: eval_env])
+          vec_eval_env = VecNormalize(vec_eval_env, norm_obs=True, norm_reward=False)
+          vec_eval_env = VecNormalize.load(os.path.join(SAVE_PATH, "vecnormalize.pkl"), vec_eval_env)
 
-      print(Fore.BLUE + f"Begin Evaluating PPO For Larger Time {larger_evaluation/60} M..."+ Style.RESET_ALL)
- 
-      eval_env = SumoEnvironment(**parameters)
-      vec_eval_env = DummyVecEnv([lambda: eval_env])
-      vec_eval_env = VecNormalize(vec_eval_env, norm_obs=True, norm_reward=False)
-      vec_eval_env = VecNormalize.load(os.path.join(SAVE_PATH, "vecnormalize.pkl"), vec_eval_env)
-
-      obs = vec_eval_env.reset()
-      c_reward = 0
+          obs = vec_eval_env.reset()
+          c_reward = 0
 
 
-      for i in range(10000000):
-                        # Not using 'done' here because yellow_time and delta_time make it hard to control the exact end time.
-                        # This loop is only for benchmarking purposes, so it's fine.
-                        # It may cause 'tcpip::Socket::recvAndCheck @ recv: peer shutdown' when SUMO closes automatically.
+          for i in range(10000000):
+                            # Not using 'done' here because yellow_time and delta_time make it hard to control the exact end time.
+                            # This loop is only for benchmarking purposes, so it's fine.
+                            # It may cause 'tcpip::Socket::recvAndCheck @ recv: peer shutdown' when SUMO closes automatically.
 
-                        action, _ = model.predict(obs, deterministic=True)
-                        obs, reward, done, _ = vec_eval_env.step(action)
-                        c_reward += reward
-                        print(traci.simulation.getTime(),"of",(begin_time + larger_evaluation)) # additional print to prevent stuckking
+                            action, _ = model.predict(obs, deterministic=True)
+                            obs, reward, done, _ = vec_eval_env.step(action)
+                            c_reward += reward
+                            print(traci.simulation.getTime(),"of",(begin_time + larger_evaluation)) # additional print to prevent stuckking
 
-                        if done:
-                          break
-                        if ( traci.simulation.getTime() >= (begin_time + larger_evaluation)):
-                          break
+                            if done:
+                              break
+                            if ( traci.simulation.getTime() >= (begin_time + larger_evaluation)):
+                              break
 
-      eval_env.close()
-      #vec_eval_env.close()
-      results_dict_large_eval = get_sumo_statics(path_data)
-      print(f"Eval METRICES {results_dict_large_eval}")
+          eval_env.close()
+          #vec_eval_env.close()
+          results_dict_large_eval = get_sumo_statics(path_data)
+          print(f"Eval METRICES {results_dict_large_eval}")
 
       if save_parameters:
             model.save(os.path.join(SAVE_PATH, "ppo_model"))
@@ -542,6 +655,7 @@ if algorithm == "D3QN":
         # Evaluation for same time
         
         print(Fore.BLUE + f"Begin Evaluating D3QN On Same Time..."+ Style.RESET_ALL)
+
         rewards_evaluated_envs = []
 
         for i in range(n_episode_evaluation):
@@ -572,37 +686,34 @@ if algorithm == "D3QN":
         print(results_dict)
         
         # Evaluation for larger time
-        
-       
-        print(Fore.BLUE + f"Begin Evaluating D3QN For Larger Time {larger_evaluation/60} M..."+ Style.RESET_ALL)
+        if larg_eval_enable:
+            print(Fore.BLUE + f"Begin Evaluating D3QN For Larger Time {larger_evaluation/60} M..."+ Style.RESET_ALL)
+           
+            parameters['num_seconds'] = larger_evaluation
+            parameters["additional_sumo_cmd"]= f"--no-warnings -e {begin_time+larger_evaluation} --statistic-output {path_stat} --tripinfo-output {path_trip} --scale {sumo_traffic_scale} --step-length {1} --collision.action warn --collision.check-junctions True --collision.mingap-factor 0.1 --pedestrian.striping.mingap-to-vehicle 0.25 --weights.random-factor 1.5 --threads 1 --log sumo.log"
 
-        
-
-        parameters['num_seconds'] = larger_evaluation
-        parameters["additional_sumo_cmd"]= f"--no-warnings -e {begin_time+larger_evaluation} --statistic-output {path_stat} --tripinfo-output {path_trip} --scale {sumo_traffic_scale} --step-length {1} --collision.action warn --collision.check-junctions True --collision.mingap-factor 0.1 --pedestrian.striping.mingap-to-vehicle 0.25 --weights.random-factor 1.5 --threads 1 --log sumo.log"
-
-        env_eval = SumoEnvironment(**parameters)
-        env_eval = NormalizeObservation(env_eval, epsilon=1e-8)
+            env_eval = SumoEnvironment(**parameters)
+            env_eval = NormalizeObservation(env_eval, epsilon=1e-8)
 
 
-        obs,info = env_eval.reset()
-        c_reward = 0
+            obs,info = env_eval.reset()
+            c_reward = 0
 
 
-        while not (traci.simulation.getTime() >= (begin_time + larger_evaluation)): 
-                            # Not using 'done' here because yellow_time and delta_time make it hard to control the exact end time.
-                            # This loop is only for benchmarking purposes, so it's fine.
-                            # It may cause 'tcpip::Socket::recvAndCheck @ recv: peer shutdown' when SUMO closes automatically.
+            while not (traci.simulation.getTime() >= (begin_time + larger_evaluation)): 
+                                # Not using 'done' here because yellow_time and delta_time make it hard to control the exact end time.
+                                # This loop is only for benchmarking purposes, so it's fine.
+                                # It may cause 'tcpip::Socket::recvAndCheck @ recv: peer shutdown' when SUMO closes automatically.
 
-                            action = agent.get_action(obs)
-                            obs, reward, done, _, info = env_eval.step(action)
-                            c_reward += reward
-                            if done:
-                               break
-        env_eval.close()
+                                action = agent.get_action(obs)
+                                obs, reward, done, _, info = env_eval.step(action)
+                                c_reward += reward
+                                if done:
+                                  break
+            env_eval.close()
 
-        results_dict_large_eval = get_sumo_statics(path_data)
-        print(results_dict_large_eval)
+            results_dict_large_eval = get_sumo_statics(path_data)
+            print(results_dict_large_eval)
         if save_parameters:
             agent.save_model(os.path.join(SAVE_PATH, "d3qn_model.keras"))
             print(f"MODEL IS SAVED AT {os.path.join(SAVE_PATH, "d3qn_model")}")
@@ -633,7 +744,7 @@ else:
 
     for key, value in results_dict.items():
         print(Fore.CYAN + f"{key}: {round(value,3)}" + Style.RESET_ALL)
-    
+ 
     WriteRow({
         "Reward of Last Episode": last_cumulative_reward,
         "Derivative of Reward": derivative,
@@ -644,11 +755,11 @@ else:
         "Waiting Car": results_dict['waiting_vehicles'],
 
         "Average Reward for Evaluated Episodes With Same Time":avg_reward_evaluated,
-        "Waiting Car on Final Test":results_dict_large_eval['waiting_vehicles'],
-        "Time Loss (s) on Final Test":results_dict_large_eval['time_loss'],
-        "Depart Delay (s) on Final Test": results_dict_large_eval['depart_delay'],
-        "Speed (m/s) on Final Test":results_dict_large_eval['speed'],
-        "Waiting Time (s) on Final Test":results_dict_large_eval['waiting_time'],
+        "Waiting Car on Final Test":results_dict_large_eval['waiting_vehicles'] if  (larg_eval_enable) else 0,
+        "Time Loss (s) on Final Test":results_dict_large_eval['time_loss'] if  (larg_eval_enable) else 0,
+        "Depart Delay (s) on Final Test": results_dict_large_eval['depart_delay'] if  (larg_eval_enable) else 0,
+        "Speed (m/s) on Final Test":results_dict_large_eval['speed'] if  (larg_eval_enable) else 0,
+        "Waiting Time (s) on Final Test":results_dict_large_eval['waiting_time'] if  (larg_eval_enable) else 0,
         "Reward on Final Test": c_reward,
 
         "Total Time Of Training (M)": round(time_diff/60, 3),
@@ -657,5 +768,4 @@ else:
     
     print(Fore.CYAN + f"Written completed. Finished {count_full_rows(EXCEL_PATH)} Experiments" + Style.RESET_ALL)
 
-    env.close()
     print(Fore.CYAN + "---------------------------------------" + Style.RESET_ALL)

@@ -136,6 +136,7 @@ durations = experiment_settings_const["durations"]
 enable_gcd = experiment_settings_const["enable_gcd"]
 n_episode_evaluation = experiment_settings_const["n_episode_evaluation"]
 larger_evaluation = experiment_settings_const["larger_evaluation"]
+larg_eval_enable = True
 
 if enable_gcd:
     step_size, reduced_durations = gcd_and_reduced(durations)
@@ -150,7 +151,7 @@ next_sheet_row = clean_dict_values(next_sheet_row)
 # Changable experiment settings
 data_name = next_sheet_row['Area'] # the parameter only affect when not optimizing
 n_epsiode = int(next_sheet_row['Episodes']) # the parameter only affect when not optimizing
-ENV_NAME = next_sheet_row['Environment Type']
+ENV_NAME =next_sheet_row['Environment Type']
 REWARD_TYPE = next_sheet_row['Reward']
 seed = int(next_sheet_row['Seed']) # the parameter only affect when not optimizing
 begin_time = larger_evaluation
@@ -166,25 +167,45 @@ EXPERIMENT_NAME = experiment_settings_changable["EXPERIMENT_NAME"]
 # Data folder paths
 if data_name == 'Mosheer':
     path_data_folder = path_project_folder + "AIST/data2_mosheerIsmail/"
+
+        
+elif data_name == "Bench(2waySingle)":
+    path_data_folder = path_project_folder + "AIST/2waySingle/"
+    begin_time = 0
+    n_step = int(1e5 - begin_time) # 100000
+    end_time = begin_time + n_step
+    #larger_evaluation = 0 # no need for this in the benechmark
+    larg_eval_enable = False
+    n_episode_evaluation = 1
 else:
     path_data_folder = path_project_folder + "AIST/data3_san_stefano/"
 
 path_cfg = path_data_folder + "cfg.sumocfg"
-
-print(Fore.RED + f"CURRENT Experiment -- Data: {data_name} | Reward: {REWARD_TYPE} | "
-                 f"Algorithm: {algorithm} | Episodes: {n_epsiode} | Begin {begin_time} , End: {end_time} ({n_step} seconds) | "
-                 f"Traffic Scale: {sumo_traffic_scale} | Seed: {seed}" + Style.RESET_ALL)
 
 MODEL_NAME = f"{data_name}_{REWARD_TYPE}_{algorithm}_{sumo_traffic_scale}_{seed}"
 SAVE_PATH = path_project_folder+f"/OUTPUT/ENV_{MODEL_NAME}/" if save_parameters else ""
 if save_parameters:
     os.makedirs(SAVE_PATH, exist_ok=True)
 
+
+print(Fore.RED + f"CURRENT Experiment -- Data: {data_name} | Reward: {REWARD_TYPE} | "
+                 f"Algorithm: {algorithm} | Episodes: {n_epsiode} | Begin {begin_time} , End: {end_time} ({n_step} seconds) | "
+                 f"Traffic Scale: {sumo_traffic_scale} | Seed: {seed}" + Style.RESET_ALL)
+
 # ----------------------------
 # Initialize SUMO Connection
 # ----------------------------
 conn = SumoConnection.SumoConnection(path_cfg, step_size, log_file,begin_time=begin_time, end_time=end_time, seed=seed)
+if  data_name == "Bench(Cologne)":
+    # Restore it default
+    conn.collision_mingap_factor = "-1"
+    conn.weights_random_factor = "1"
+    conn.time_to_teleport = 300
+    conn.max_depart = -1
 
+    yellow_time = 2
+
+    reduced_durations = [5 ,22 ,35, 50]
 def create_env(config_):
     """Create the simulation environment with given config."""
     env = env_classes[ENV_NAME](
@@ -206,7 +227,6 @@ def create_env(config_):
     return env
 
 set_global_conn(conn)
-
 # ----------------------------
 # Prepare Road Info (Optional, Only enable this code when adding new agent/area)
 # ----------------------------
@@ -218,7 +238,7 @@ if enable_editing:
     from Utils_running_singleAgent import *
 
     path_info = path_project_folder + "info_road.csv"
-    agent_ids = ["1698478721"]
+    agent_ids = ["t"]
     agents_info = []
 
     for ag_i in agent_ids:
@@ -239,8 +259,10 @@ if enable_editing:
         }
         agents_info.append(agent_info)
         write_road_info(path_info, agents_info, clear_file=clear_file)
+    print("Written " ,agents_info)
 else:
     print("Skipped Writing Road Info")
+
 
 
 # ----------------------------
@@ -263,29 +285,52 @@ env = create_env({})
 
 
 if algorithm == 'dqn':
-    print(Fore.BLUE + "Begin Training DQN..." + Style.RESET_ALL)
     conn.reset()
     env = create_env({})
-    model = EpsDQN(
-        RMS_DQNPolicy,
-        env,
-        verbose=1,
-        batch_size=batch_size,
-        learning_rate=learning_rate,
-        gamma=gamma,
-        exploration_initial_eps=exploration_initial_eps,
-        exploration_final_eps=exploration_final_eps,
-        exploration_fraction=exploration_fraction,
-        policy_kwargs=policy_kwargs,
-        seed=seed
-    )
+    if ("Bench" in  data_name):
+        print(Fore.BLUE + "Begin Intialize DQN..." + Style.RESET_ALL)
+        model = DQN(
+            env=env,
+            policy="MlpPolicy",
+            learning_rate=0.001,
+            learning_starts=0,
+            train_freq=1,
+            target_update_interval=500,
+            exploration_initial_eps=0.05,
+            exploration_final_eps=0.01,
+            verbose=1,
+        )
+    else:
+        print(Fore.BLUE + "Begin Intialize EPS - DQN..." + Style.RESET_ALL)
+
+        model = EpsDQN(
+            RMS_DQNPolicy,
+            env,
+            verbose=1,
+            batch_size=batch_size,
+            learning_rate=learning_rate,
+            gamma=gamma,
+            exploration_initial_eps=exploration_initial_eps,
+            exploration_final_eps=exploration_final_eps,
+            exploration_fraction=exploration_fraction,
+            policy_kwargs=policy_kwargs,
+            seed=seed
+        )
+
+    
     callback = Stable_RewardCallback(max_episodes=n_epsiode)
     time_before = time.time()
-    model.learn(total_timesteps=1e9, callback=callback)
+    model.learn(total_timesteps=1e11, callback=callback)
     time_after = time.time()
     rewards = callback.episode_rewards
     results_dict = env.last_run_dict
     env.close()
+
+    print(Fore.BLUE + f"Begin Evaluating DQN On Same Time..."+ Style.RESET_ALL)
+    evaluate_results= evaluate_policy(model, env, n_eval_episodes=n_episode_evaluation, return_episode_rewards=False)[0]
+    #env.save(os.path.join(SAVE_PATH, "vecnormalize.pkl"))
+    conn.reset()
+
 else:
     print("Skipped DQN")
 
@@ -402,32 +447,31 @@ if algorithm == 'PPO':
 
       print(Fore.BLUE + f"Begin Evaluating PPO On Same Time..."+ Style.RESET_ALL)
       evaluate_results= evaluate_policy(model, env, n_eval_episodes=n_episode_evaluation, return_episode_rewards=False)[0]
-
-
-      print(Fore.BLUE + f"Begin Evaluating PPO For Larger Time {larger_evaluation/60} M..."+ Style.RESET_ALL)
-
       vec_env.save(os.path.join(SAVE_PATH, "vecnormalize.pkl"))
-
       conn.reset()
-      conn.end_time =  conn.begin_time + larger_evaluation
+      
+      if larg_eval_enable:
+          print(Fore.BLUE + f"Begin Evaluating PPO For Larger Time {larger_evaluation/60} M..."+ Style.RESET_ALL)
+          
+          conn.end_time =  conn.begin_time + larger_evaluation
 
-      eval_env = create_env({})
-      vec_eval_env = DummyVecEnv([lambda: eval_env])
-      vec_eval_env = VecNormalize(vec_eval_env, norm_obs=True, norm_reward=False)
-      vec_eval_env = VecNormalize.load(os.path.join(SAVE_PATH, "vecnormalize.pkl"), vec_eval_env)
+          eval_env = create_env({})
+          vec_eval_env = DummyVecEnv([lambda: eval_env])
+          vec_eval_env = VecNormalize(vec_eval_env, norm_obs=True, norm_reward=False)
+          vec_eval_env = VecNormalize.load(os.path.join(SAVE_PATH, "vecnormalize.pkl"), vec_eval_env)
 
-      obs = vec_eval_env.reset()
-      done = False
-      c_reward = 0
+          obs = vec_eval_env.reset()
+          done = False
+          c_reward = 0
 
-      while not done:
-          action, _ = model.predict(obs, deterministic=True)
-          obs, reward, done, _ = vec_eval_env.step(action)
-          c_reward += reward
+          while not done:
+              action, _ = model.predict(obs, deterministic=True)
+              obs, reward, done, _ = vec_eval_env.step(action)
+              c_reward += reward
 
-      eval_last_run_dict = eval_env.last_run_dict
-      print(f"Eval METRICES {eval_last_run_dict}")
-      vec_eval_env.close()
+          eval_last_run_dict = eval_env.last_run_dict
+          print(f"Eval METRICES {eval_last_run_dict}")
+          vec_eval_env.close()
 
       if save_parameters:
             model.save(os.path.join(SAVE_PATH, "ppo_model"))
@@ -522,8 +566,7 @@ if algorithm == "D3QN":
     else:
         print("Skipped Optuna")
 
-        print(Fore.BLUE + "Initializing D3QN..." + Style.RESET_ALL)
-        
+ 
         env = create_env({})
         env = NormalizeObservation(env, epsilon=1e-8)
         state_size = env.observation_space.shape
@@ -564,31 +607,30 @@ if algorithm == "D3QN":
         print(Fore.BLUE + f"Begin Evaluating D3QN On Same Time..."+ Style.RESET_ALL)
         evaluate_results = agent.evaluate(num_episodes=n_episode_evaluation)
 
-        # Evaluation for larger time
-        
+        # Evaluation for larger time       
         conn.reset()
-        print(Fore.BLUE + f"Begin Evaluating D3QN For Larger Time {larger_evaluation/60} M..."+ Style.RESET_ALL)
 
-        
-        conn.end_time  = conn.begin_time + larger_evaluation
+        if larg_eval_enable:
+            print(Fore.BLUE + f"Begin Evaluating D3QN For Larger Time {larger_evaluation/60} M..."+ Style.RESET_ALL)
+            conn.end_time  = conn.begin_time + larger_evaluation
 
-        eval_env = create_env({})
-        eval_env = NormalizeObservation(eval_env, epsilon=1e-8)    
-        
-        obs,_ = eval_env.reset()
-        done = False
-        c_reward = 0
-        while (not done) :
-            action = agent.get_action(obs) 
-            obs, reward, done,_, info = eval_env.step(action) # Can be negative as normalized
-            c_reward += reward
-            if done:
-              break
+            eval_env = create_env({})
+            eval_env = NormalizeObservation(eval_env, epsilon=1e-8)    
+            
+            obs,_ = eval_env.reset()
+            done = False
+            c_reward = 0
+            while (not done) :
+                action = agent.get_action(obs) 
+                obs, reward, done,_, info = eval_env.step(action) # Can be negative as normalized
+                c_reward += reward
+                if done:
+                  break
 
-        conn.close()
-        eval_env.close()
-        eval_last_run_dict = eval_env.env.last_run_dict
-        print("Eval test ", eval_last_run_dict)
+            conn.close()
+            eval_env.close()
+            eval_last_run_dict = eval_env.env.last_run_dict
+            print("Eval test ", eval_last_run_dict)
         if save_parameters:
             agent.save_model(os.path.join(SAVE_PATH, "d3qn_model.keras"))
             print(f"MODEL IS SAVED AT {os.path.join(SAVE_PATH, "d3qn_model")}")
@@ -628,12 +670,13 @@ else:
         "Waiting Car": results_dict['waiting_vehicles'],
 
         "Average Reward for Evaluated Episodes With Same Time":evaluate_results,
-        "Waiting Car on Final Test":eval_last_run_dict['waiting_vehicles'],
-        "Time Loss (s) on Final Test":eval_last_run_dict['time_loss'],
-        "Depart Delay (s) on Final Test": eval_last_run_dict['depart_delay'],
-        "Speed (m/s) on Final Test":eval_last_run_dict['speed'],
-        "Waiting Time (s) on Final Test":eval_last_run_dict['waiting_time'],
-        "Reward on Final Test": c_reward,
+        "Waiting Car on Final Test":eval_last_run_dict['waiting_vehicles'] if  (larg_eval_enable) else 0,
+        "Time Loss (s) on Final Test":eval_last_run_dict['time_loss'] if  (larg_eval_enable) else 0,
+        "Depart Delay (s) on Final Test": eval_last_run_dict['depart_delay'] if  (larg_eval_enable) else 0,
+        "Speed (m/s) on Final Test":eval_last_run_dict['speed'] if  (larg_eval_enable) else 0,
+        "Waiting Time (s) on Final Test":eval_last_run_dict['waiting_time'] if  (larg_eval_enable) else 0,
+        "Reward on Final Test": c_reward if  (larg_eval_enable) else 0,
+
 
         "Total Time Of Training (M)": round(time_diff/60, 3),
         "Device": "colab"

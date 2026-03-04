@@ -132,12 +132,26 @@ def count_full_rows(file_path):
 
 def clean_dict_values(dict_):
     if "Area" in dict_:
-          dict_["Area"] = 'Mosheer' if ('Mosheer' in dict_["Area"]) else 'Stefano' 
+          dict_["Area"] = (
+              'Mosheer' if 'Mosheer' in dict_["Area"]
+              else 'Stefano' if 'Stefano' in dict_["Area"]
+              else dict_["Area"]
+          )
     if "Reward" in dict_:
-          dict_["Reward"] = 'proposed' if ('Proposed' in dict_["Reward"]) else 'literature'
+        reward_value = dict_.get("Reward", "")
+        dict_["Reward"] = (
+            "proposed" if "Proposed" in reward_value
+            else "literature" if "Literature" in reward_value
+            else "default"
+        )
     if "Traffic Scale" in dict_:
-          dict_["Traffic Scale"] = .14 if ('Normal' in dict_["Traffic Scale"]) else .38
-    return dict_
+          traffic_value = dict_.get("Traffic Scale", "")
+          dict_["Traffic Scale"] = (
+              0.14 if "Normal" in traffic_value
+              else 0.38 if "Crowding" in traffic_value
+              else 0.0   # Default (0")
+          )   
+          return dict_
 
 
 
